@@ -1,0 +1,9 @@
+{
+  "port": 3001,
+  "printer_type": "mock",
+  "printer_name": "EPSON PLQ-20 ESC/P2",
+  "serial_port": "COM3",
+  "baud_rate": 9600,
+  "log_level": "info",
+  "enable_eject": false
+}

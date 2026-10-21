@@ -1,0 +1,22 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test / run output
+simulated_passbook.log
+test_print.log
+*.log
+
+.dist/
+config.json
+.agents
+.build
+.gemini
+.idea
+
+# OS generated
+.DS_Store
+Thumbs.db

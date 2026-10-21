@@ -1,0 +1,312 @@
+{
+  "active_template": "bri-simpedes",
+  "templates": [
+    {
+      "id": "bri-simpedes",
+      "name": "BRI BritAma / Simpedes (35 Baris - 210 x 148 mm)",
+      "max_columns": 80,
+      "columns": [
+        {
+          "id": "col_tanggal",
+          "field_key": "tanggal",
+          "display_name": "Tgl Transaksi",
+          "col_start": 0,
+          "col_width": 9,
+          "align": "left"
+        },
+        {
+          "id": "col_sandi",
+          "field_key": "kode_transaksi",
+          "display_name": "Sandi",
+          "col_start": 9,
+          "col_width": 5,
+          "align": "center"
+        },
+        {
+          "id": "col_uraian",
+          "field_key": "keterangan",
+          "display_name": "Uraian / Mutasi",
+          "col_start": 14,
+          "col_width": 20,
+          "align": "left"
+        },
+        {
+          "id": "col_debet",
+          "field_key": "debet",
+          "display_name": "Penarikan (D)",
+          "col_start": 34,
+          "col_width": 10,
+          "align": "right"
+        },
+        {
+          "id": "col_kredit",
+          "field_key": "kredit",
+          "display_name": "Setoran (K)",
+          "col_start": 44,
+          "col_width": 11,
+          "align": "right"
+        },
+        {
+          "id": "col_saldo",
+          "field_key": "saldo_sesudah",
+          "display_name": "Saldo Akhir",
+          "col_start": 55,
+          "col_width": 11,
+          "align": "right"
+        },
+        {
+          "id": "col_petugas",
+          "field_key": "petugas",
+          "display_name": "Petugas",
+          "col_start": 66,
+          "col_width": 14,
+          "align": "center"
+        }
+      ]
+    },
+    {
+      "id": "bca-tahapan",
+      "name": "BCA Tahapan Reguler (32 Baris)",
+      "max_columns": 80,
+      "columns": [
+        {
+          "id": "col_tanggal",
+          "field_key": "tanggal",
+          "display_name": "Tanggal",
+          "col_start": 0,
+          "col_width": 8,
+          "align": "left"
+        },
+        {
+          "id": "col_sandi",
+          "field_key": "kode_transaksi",
+          "display_name": "Kode",
+          "col_start": 8,
+          "col_width": 6,
+          "align": "center"
+        },
+        {
+          "id": "col_uraian",
+          "field_key": "keterangan",
+          "display_name": "Keterangan",
+          "col_start": 15,
+          "col_width": 20,
+          "align": "left"
+        },
+        {
+          "id": "col_debet",
+          "field_key": "debet",
+          "display_name": "Debet",
+          "col_start": 37,
+          "col_width": 13,
+          "align": "right"
+        },
+        {
+          "id": "col_kredit",
+          "field_key": "kredit",
+          "display_name": "Kredit",
+          "col_start": 47,
+          "col_width": 13,
+          "align": "right"
+        },
+        {
+          "id": "col_saldo",
+          "field_key": "saldo_sesudah",
+          "display_name": "Saldo",
+          "col_start": 60,
+          "col_width": 14,
+          "align": "right"
+        },
+        {
+          "id": "col_petugas",
+          "field_key": "petugas",
+          "display_name": "Teller",
+          "col_start": 74,
+          "col_width": 6,
+          "align": "center"
+        }
+      ]
+    },
+    {
+      "id": "mandiri-bisnis",
+      "name": "Bank Mandiri Tabungan Bisnis",
+      "max_columns": 80,
+      "columns": [
+        {
+          "id": "col_tanggal",
+          "field_key": "tanggal",
+          "display_name": "Tanggal",
+          "col_start": 0,
+          "col_width": 10,
+          "align": "left"
+        },
+        {
+          "id": "col_sandi",
+          "field_key": "kode_transaksi",
+          "display_name": "Sandi",
+          "col_start": 10,
+          "col_width": 5,
+          "align": "center"
+        },
+        {
+          "id": "col_uraian",
+          "field_key": "keterangan",
+          "display_name": "Uraian Transaksi",
+          "col_start": 15,
+          "col_width": 19,
+          "align": "left"
+        },
+        {
+          "id": "col_debet",
+          "field_key": "debet",
+          "display_name": "Mutasi Debet",
+          "col_start": 34,
+          "col_width": 13,
+          "align": "right"
+        },
+        {
+          "id": "col_kredit",
+          "field_key": "kredit",
+          "display_name": "Mutasi Kredit",
+          "col_start": 47,
+          "col_width": 13,
+          "align": "right"
+        },
+        {
+          "id": "col_saldo",
+          "field_key": "saldo_sesudah",
+          "display_name": "Saldo Akhir",
+          "col_start": 60,
+          "col_width": 14,
+          "align": "right"
+        },
+        {
+          "id": "col_petugas",
+          "field_key": "petugas",
+          "display_name": "TLR",
+          "col_start": 74,
+          "col_width": 6,
+          "align": "center"
+        }
+      ]
+    },
+    {
+      "id": "bni-taplus",
+      "name": "BNI Taplus Utama (30 Baris)",
+      "max_columns": 80,
+      "columns": [
+        {
+          "id": "col_tanggal",
+          "field_key": "tanggal",
+          "display_name": "Tgl Tx",
+          "col_start": 0,
+          "col_width": 9,
+          "align": "left"
+        },
+        {
+          "id": "col_sandi",
+          "field_key": "kode_transaksi",
+          "display_name": "Sandi",
+          "col_start": 9,
+          "col_width": 5,
+          "align": "center"
+        },
+        {
+          "id": "col_uraian",
+          "field_key": "keterangan",
+          "display_name": "Keterangan",
+          "col_start": 14,
+          "col_width": 20,
+          "align": "left"
+        },
+        {
+          "id": "col_debet",
+          "field_key": "debet",
+          "display_name": "Debet",
+          "col_start": 34,
+          "col_width": 13,
+          "align": "right"
+        },
+        {
+          "id": "col_kredit",
+          "field_key": "kredit",
+          "display_name": "Kredit",
+          "col_start": 47,
+          "col_width": 13,
+          "align": "right"
+        },
+        {
+          "id": "col_saldo",
+          "field_key": "saldo_sesudah",
+          "display_name": "Saldo Akhir",
+          "col_start": 60,
+          "col_width": 14,
+          "align": "right"
+        },
+        {
+          "id": "col_petugas",
+          "field_key": "petugas",
+          "display_name": "Teller",
+          "col_start": 74,
+          "col_width": 6,
+          "align": "center"
+        }
+      ]
+    },
+    {
+      "id": "tmpl-1792500970",
+      "name": "Bank BJB",
+      "max_columns": 80,
+      "columns": [
+        {
+          "id": "col_tanggal",
+          "field_key": "tanggal",
+          "display_name": "Tanggal",
+          "col_start": 0,
+          "col_width": 9,
+          "align": "left"
+        },
+        {
+          "id": "col_sandi",
+          "field_key": "kode_transaksi",
+          "display_name": "Sandi",
+          "col_start": 9,
+          "col_width": 5,
+          "align": "left"
+        },
+        {
+          "id": "col_debet",
+          "field_key": "debet",
+          "display_name": "Debet",
+          "col_start": 14,
+          "col_width": 13,
+          "align": "right"
+        },
+        {
+          "id": "col_kredit",
+          "field_key": "kredit",
+          "display_name": "Kredit",
+          "col_start": 27,
+          "col_width": 13,
+          "align": "right"
+        },
+        {
+          "id": "col_saldo",
+          "field_key": "saldo_sesudah",
+          "display_name": "Saldo",
+          "col_start": 40,
+          "col_width": 15,
+          "align": "right"
+        },
+        {
+          "id": "col_petugas",
+          "field_key": "petugas",
+          "display_name": "Validasi / Teller",
+          "col_start": 55,
+          "col_width": 12,
+          "align": "left"
+        }
+      ]
+    }
+  ]
+}
