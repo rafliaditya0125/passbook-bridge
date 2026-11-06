@@ -35,9 +35,20 @@ jobs:
           cache: true
 
       - name: Set up MinGW (GCC for CGO)
-        uses: egor-tensin/setup-mingw@v2
-        with:
-          platform: x64
+        shell: powershell
+        run: |
+          if (Test-Path "C:\msys64\mingw64\bin\gcc.exe") {
+            Write-Host "Menggunakan MinGW64 bawaan runner di C:\msys64\mingw64\bin"
+            Add-Content -Path $env:GITHUB_PATH -Value "C:\msys64\mingw64\bin"
+          } elseif (Test-Path "C:\msys64\ucrt64\bin\gcc.exe") {
+            Write-Host "Menggunakan UCRT64 bawaan runner di C:\msys64\ucrt64\bin"
+            Add-Content -Path $env:GITHUB_PATH -Value "C:\msys64\ucrt64\bin"
+          } else {
+            Write-Host "Mengunduh MinGW via Chocolatey..."
+            choco install mingw --no-progress -y
+            Add-Content -Path $env:GITHUB_PATH -Value "C:\ProgramData\chocolatey\bin"
+            Add-Content -Path $env:GITHUB_PATH -Value "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin"
+          }
 
       - name: Verify Environment
         shell: powershell
