@@ -32,8 +32,17 @@ Installer dibuat menggunakan **Inno Setup**, standar industri untuk installer so
 ```
 
 ### Cara 3: Melalui CI/CD (GitHub Actions)
-Jika Anda menggunakan GitHub Actions, Inno Setup bisa dijalankan otomatis pada runner Windows dengan menambahkan step:
-```yaml
-- name: Build Installer
-  run: iscc installer/passbook-bridge-setup.iss
-```
+Repository ini telah dilengkapi dengan workflow GitHub Actions otomatis di [`.github/workflows/build-installer.yml`](../.github/workflows/build-installer.yml).
+Workflow ini akan:
+1. Menyiapkan environment Windows (`windows-latest`), Go, dan MinGW (GCC untuk CGO/Fyne).
+2. Menjalankan unit test (`go test ./...`).
+3. Mengompilasi binary `passbook-bridge.exe` dan `passbook-bridge-gui.exe`, serta menyalin file konfigurasi default ke `dist/`.
+4. Memasang Inno Setup 6 dan memastikan file lokalisasi `Indonesian.isl` siap digunakan.
+5. Mengompilasi installer `.exe` menggunakan `ISCC.exe`.
+6. Mengunggah file installer sebagai GitHub Artifact yang dapat diunduh langsung dari tab **Actions**.
+7. Membuat GitHub Release otomatis jika di-trigger oleh push Git Tag (misal `v0.1.0`).
+
+Workflow dapat dipicu melalui:
+- Push atau Pull Request ke branch `main`.
+- Push Git tag berformat `v*` (contoh: `git tag v0.1.0 && git push origin v0.1.0`).
+- Manual trigger melalui menu **Actions** > **Build & Package Windows Installer** > **Run workflow** (dapat menentukan custom version).

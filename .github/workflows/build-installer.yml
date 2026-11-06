@@ -1,0 +1,134 @@
+name: Build & Package Windows Installer
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Installer version (e.g. 0.1.0)'
+        required: false
+        default: '0.1.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-installer:
+    name: Build Inno Setup Installer
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: 'go.mod'
+          cache: true
+
+      - name: Set up MinGW (GCC for CGO)
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x64
+
+      - name: Verify Environment
+        shell: powershell
+        run: |
+          go version
+          gcc --version
+
+      - name: Run Unit Tests
+        shell: powershell
+        run: |
+          go test ./...
+
+      - name: Build Windows Binaries & Assets
+        shell: powershell
+        env:
+          CGO_ENABLED: '1'
+        run: |
+          New-Item -ItemType Directory -Force -Path dist
+
+          Write-Host "[1/4] Building Service binary (passbook-bridge.exe)..."
+          go build -ldflags="-s -w" -o dist\passbook-bridge.exe .\cmd\bridge
+
+          Write-Host "[2/4] Building Desktop GUI (passbook-bridge-gui.exe)..."
+          go build -ldflags="-H windowsgui -s -w" -o dist\passbook-bridge-gui.exe .\cmd\gui
+
+          Write-Host "[3/4] Copying default configurations..."
+          Copy-Item config.json.example -Destination dist\config.json -Force
+          Copy-Item layouts.json -Destination dist\layouts.json -Force
+
+          Write-Host "[4/4] Verifying dist directory contents:"
+          Get-ChildItem dist\
+
+      - name: Install Inno Setup
+        shell: powershell
+        run: |
+          choco install innosetup --no-progress -y
+          Add-Content -Path $env:GITHUB_PATH -Value "${env:ProgramFiles(x86)}\Inno Setup 6"
+
+      - name: Ensure Indonesian Language File
+        shell: powershell
+        run: |
+          $innoLanguages = "${env:ProgramFiles(x86)}\Inno Setup 6\Languages"
+          if (-not (Test-Path "$innoLanguages\Indonesian.isl")) {
+            if (Test-Path "$innoLanguages\Unofficial\Indonesian.isl") {
+              Write-Host "Copying Indonesian.isl from Unofficial folder..."
+              Copy-Item "$innoLanguages\Unofficial\Indonesian.isl" "$innoLanguages\Indonesian.isl"
+            } else {
+              Write-Host "Downloading Indonesian.isl from official repository..."
+              Invoke-WebRequest -Uri "https://raw.githubusercontent.com/jrsoftware/issrc/main/Files/Languages/Unofficial/Indonesian.isl" -OutFile "$innoLanguages\Indonesian.isl"
+            }
+          }
+          if (Test-Path "$innoLanguages\Indonesian.isl") {
+            Write-Host "Indonesian language file ready at: $innoLanguages\Indonesian.isl"
+          } else {
+            Write-Error "Failed to locate Indonesian.isl"
+          }
+
+      - name: Compile Inno Setup Script
+        shell: powershell
+        env:
+          INPUT_VERSION: ${{ github.event.inputs.version }}
+        run: |
+          $version = "0.1.0"
+          if ($env:INPUT_VERSION) {
+            $version = $env:INPUT_VERSION
+          } elseif ($env:GITHUB_REF -like 'refs/tags/v*') {
+            $version = $env:GITHUB_REF -replace '^refs/tags/v', ''
+          }
+          Write-Host "Compiling Inno Setup installer for version: $version"
+
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            $iscc = "ISCC.exe"
+          }
+          & $iscc /DMyAppVersion="$version" installer\passbook-bridge-setup.iss
+
+          Write-Host "Verifying built installer:"
+          Get-ChildItem dist\installer\
+
+      - name: Upload Installer as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PassbookBridge-Installer
+          path: dist/installer/*.exe
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/installer/*.exe
+          draft: false
+          prerelease: false
+          generate_release_notes: true
