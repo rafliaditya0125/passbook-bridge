@@ -22,6 +22,18 @@ func executeWithPasswordPrompt(
 	action func(password string) (string, error),
 	onSuccess func(output string),
 ) {
+	// Pada Windows: otorisasi administrator ditangani langsung oleh sistem operasi via dialog UAC bawaan (Yes/No),
+	// sehingga pengguna TIDAK PERNAH diminta mengetikkan password di dalam GUI aplikasi (cocok untuk akun administrator tanpa password).
+	if runtime.GOOS == "windows" {
+		out, err := action("")
+		if err != nil {
+			showError(err, win)
+		} else {
+			onSuccess(out)
+		}
+		return
+	}
+
 	// Jika Linux, cek dulu apakah sudo tanpa password (sudo -n) sudah aktif
 	if runtime.GOOS == "linux" {
 		testCmd := exec.Command("sudo", "-n", "true")
@@ -34,31 +46,20 @@ func executeWithPasswordPrompt(
 			}
 			return
 		}
-	} else if runtime.GOOS == "windows" {
-		// Pada Windows, coba jalankan langsung (berhasil jika aplikasi di-run as administrator)
-		out, err := action("")
-		if err == nil {
-			onSuccess(out)
-			return
-		}
 	}
 
-	// Tampilkan modal password prompt di dalam GUI Fyne (Dead Center)
+	// Tampilkan modal password prompt di dalam GUI Fyne (Dead Center) - KHUSUS LINUX jika butuh sudo
 	passEntry := widget.NewPasswordEntry()
-	passEntry.SetPlaceHolder("Masukkan password administrator / root")
+	passEntry.SetPlaceHolder("Masukkan password root / sudo (kosongkan jika tanpa password)")
 
 	infoLabel := widget.NewLabel(
-		fmt.Sprintf("Tindakan '%s' membutuhkan izin Administrator / root pada sistem.\nSilakan masukkan password akun Anda untuk melanjutkan:", actionName),
+		fmt.Sprintf("Tindakan '%s' membutuhkan izin root / sudo pada sistem Linux.\nSilakan masukkan password akun Anda untuk melanjutkan:", actionName),
 	)
 
 	var d ModalDialog
 
 	handleExecute := func() {
 		pwd := passEntry.Text
-		if pwd == "" {
-			showError(fmt.Errorf("password tidak boleh kosong"), win)
-			return
-		}
 		if d != nil {
 			d.Hide()
 		}
@@ -81,7 +82,7 @@ func executeWithPasswordPrompt(
 	)
 
 	d = showCustomConfirm(
-		"Otorisasi Administrator (Sudo)",
+		"Otorisasi Root / Sudo",
 		"Lanjutkan",
 		"Batal",
 		dialogBody,
@@ -220,7 +221,9 @@ func buildServiceTab(win fyne.Window) fyne.CanvasObject {
 			"   - Jika belum terpasang, tombol otomatis membuat file service dan langsung menyalakannya.\n" +
 			"2. Pada Linux: Mengatur unit systemd (/etc/systemd/system/passbook-bridge.service).\n" +
 			"3. Pada Windows: Mengatur Windows Service Controller (PassbookBridge via sc.exe).\n" +
-			"4. Jika membutuhkan otorisasi root/administrator, dialog password aman akan muncul langsung di dalam aplikasi.",
+			"4. Pengelolaan izin root / administrator:\n" +
+			"   - Pada Windows: Konfirmasi administrator dilakukan otomatis melalui dialog UAC bawaan (Yes/No), tanpa meminta ketik password.\n" +
+			"   - Pada Linux: Dialog otorisasi root/sudo akan muncul di dalam aplikasi jika sistem membutuhkannya.",
 	)
 
 	// Tata letak tombol utama: Tombol Toggle ON/OFF berukuran besar, Refresh, dan tombol Uninstall
