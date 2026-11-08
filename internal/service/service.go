@@ -32,11 +32,15 @@ func getPassword(pw []string) string {
 	return ""
 }
 
-// runWindowsSc menjalankan perintah sc.exe di Windows. Jika gagal karena keterbatasan hak akses (Access Denied / error 5),
-// otomatis mencoba elevasi melalui PowerShell Start-Process -Verb RunAs (memicu pop-up UAC bawaan Windows 'Yes/No', tanpa perlu ketik password).
-func runWindowsSc(scArgs ...string) (string, error) {
+// runWindowsScCmd menjalankan perintah sc di Windows melalui cmd.exe /c.
+// Penggunaan cmd.exe /c sangat penting untuk menjaga integritas sintaks sc.exe yang kaku (misalnya 'binPath= "..."' dan 'start= auto'),
+// di mana tanda kutip dan spasi tidak boleh diubah oleh Go syscall atau PowerShell argument parser.
+// Jika gagal karena keterbatasan hak akses (Access Denied / error 5), otomatis mencoba elevasi melalui UAC (RunAs).
+func runWindowsScCmd(scCommand string) (string, error) {
+	fullCmd := "sc " + scCommand
+
 	// 1. Coba eksekusi langsung (berhasil jika aplikasi sudah dijalankan 'Run as administrator')
-	cmd := exec.Command("sc", scArgs...)
+	cmd := exec.Command("cmd.exe", "/c", fullCmd)
 	out, err := cmd.CombinedOutput()
 	if err == nil {
 		return string(out), nil
@@ -50,17 +54,11 @@ func runWindowsSc(scArgs ...string) (string, error) {
 		return outStr, fmt.Errorf("%s (%w)", strings.TrimSpace(outStr), err)
 	}
 
-	// 2. Fallback: Elevasi via PowerShell UAC (Windows akan menampilkan konfirmasi Yes/No bawaan tanpa minta password untuk akun admin)
-	var argItems []string
-	for _, a := range scArgs {
-		escaped := strings.ReplaceAll(a, "'", "''")
-		argItems = append(argItems, fmt.Sprintf("'%s'", escaped))
-	}
-	psArgArray := "@(" + strings.Join(argItems, ", ") + ")"
-
+	// 2. Fallback: Elevasi via PowerShell UAC (RunAs) memanggil cmd.exe /c
+	escapedCmd := strings.ReplaceAll(fullCmd, "'", "''")
 	psScript := fmt.Sprintf(
-		`$p = Start-Process -FilePath "sc.exe" -ArgumentList %s -Verb RunAs -Wait -PassThru -WindowStyle Hidden; exit $p.ExitCode`,
-		psArgArray,
+		`$p = Start-Process -FilePath "cmd.exe" -ArgumentList '/c', '%s' -Verb RunAs -Wait -PassThru -WindowStyle Hidden; exit $p.ExitCode`,
+		escapedCmd,
 	)
 
 	cmdPs := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", psScript)
@@ -70,10 +68,10 @@ func runWindowsSc(scArgs ...string) (string, error) {
 		if strings.Contains(combined, "canceled by the user") || strings.Contains(combined, "dibatalkan") {
 			return "", fmt.Errorf("tindakan dibatalkan oleh pengguna (izin Administrator / UAC ditolak)")
 		}
-		return outStr, fmt.Errorf("perintah sc %v gagal: %s (%w)", scArgs, strings.TrimSpace(outStr), err)
+		return outStr, fmt.Errorf("perintah '%s' gagal: %s (%w)", fullCmd, strings.TrimSpace(outStr), err)
 	}
 
-	return fmt.Sprintf("Perintah sc %s berhasil dieksekusi dengan izin administrator.", scArgs[0]), nil
+	return fmt.Sprintf("Perintah '%s' berhasil dieksekusi dengan izin administrator.", fullCmd), nil
 }
 
 // runPrivilegedCommand mengeksekusi perintah sistem dengan sudo -S (Linux) atau direct/elevated (Windows)
@@ -199,22 +197,42 @@ func InstallService(exePath string, password ...string) (string, error) {
 	layoutsPath := filepath.Join(workDir, "layouts.json")
 
 	if runtime.GOOS == "windows" {
-		binPathArg := fmt.Sprintf(`binPath= "%s" -config "%s" -layouts "%s"`, absExe, configPath, layoutsPath)
-		displayArg := fmt.Sprintf("DisplayName= %s", ServiceDisplayName)
+		// Pastikan file config.json dan layouts.json dicek juga di folder daemon jika tidak ditemukan di workDir
+		if _, err := os.Stat(configPath); os.IsNotExist(err) {
+			candidate := filepath.Join(dir, "config.json")
+			if _, err := os.Stat(candidate); err == nil {
+				configPath = candidate
+			}
+		}
+		if _, err := os.Stat(layoutsPath); os.IsNotExist(err) {
+			candidate := filepath.Join(dir, "layouts.json")
+			if _, err := os.Stat(candidate); err == nil {
+				layoutsPath = candidate
+			}
+		}
+
+		// Aturan sintaks sc.exe Windows sangat ketat:
+		// 1. Tepat satu spasi setelah tanda '=' (misal: 'binPath= ...', 'start= auto').
+		// 2. Seluruh path binary beserta flag harus dibungkus tanda kutip luar agar argumen -config dan -layouts tidak dianggap sebagai opsi milik sc.exe.
+		// 3. DisplayName dibungkus tanda kutip ganda jika mengandung spasi.
+		createCmd := fmt.Sprintf(
+			`create %s binPath= "\"%s\" -config \"%s\" -layouts \"%s\"" start= auto DisplayName= "%s"`,
+			WindowsServiceName, absExe, configPath, layoutsPath, ServiceDisplayName,
+		)
 
 		// Hapus service lama jika pernah ada
-		_, _ = runWindowsSc("stop", WindowsServiceName)
-		_, _ = runWindowsSc("delete", WindowsServiceName)
+		_, _ = runWindowsScCmd("stop " + WindowsServiceName)
+		_, _ = runWindowsScCmd("delete " + WindowsServiceName)
 
 		// Pasang service baru (otomatis elevasi UAC jika dibutuhkan)
-		out, err := runWindowsSc("create", WindowsServiceName, binPathArg, "start=", "auto", displayArg)
+		out, err := runWindowsScCmd(createCmd)
 		if err != nil {
 			return out, fmt.Errorf("gagal memasang service Windows: %w", err)
 		}
 
 		// Atur deskripsi dan nyalakan
-		_, _ = runWindowsSc("description", WindowsServiceName, "Layanan latar belakang perantara cetak buku tabungan dot-matrix untuk Core Banking.")
-		_, _ = runWindowsSc("start", WindowsServiceName)
+		_, _ = runWindowsScCmd(fmt.Sprintf(`description %s "Layanan latar belakang perantara cetak buku tabungan dot-matrix untuk Core Banking."`, WindowsServiceName))
+		_, _ = runWindowsScCmd("start " + WindowsServiceName)
 
 		return fmt.Sprintf("Service Windows '%s' berhasil dipasang dan otomatis berjalan di background!", WindowsServiceName), nil
 	}
@@ -282,8 +300,8 @@ func UninstallService(password ...string) (string, error) {
 	pwd := getPassword(password)
 
 	if runtime.GOOS == "windows" {
-		_, _ = runWindowsSc("stop", WindowsServiceName)
-		out, err := runWindowsSc("delete", WindowsServiceName)
+		_, _ = runWindowsScCmd("stop " + WindowsServiceName)
+		out, err := runWindowsScCmd("delete " + WindowsServiceName)
 		if err != nil {
 			return out, fmt.Errorf("gagal menghapus service Windows: %w", err)
 		}
@@ -307,7 +325,7 @@ func StartService(password ...string) (string, error) {
 	pwd := getPassword(password)
 
 	if runtime.GOOS == "windows" {
-		return runWindowsSc("start", WindowsServiceName)
+		return runWindowsScCmd("start " + WindowsServiceName)
 	}
 
 	out, err := runPrivilegedCommand(pwd, "systemctl", "start", ServiceName)
@@ -319,7 +337,7 @@ func StopService(password ...string) (string, error) {
 	pwd := getPassword(password)
 
 	if runtime.GOOS == "windows" {
-		return runWindowsSc("stop", WindowsServiceName)
+		return runWindowsScCmd("stop " + WindowsServiceName)
 	}
 
 	out, err := runPrivilegedCommand(pwd, "systemctl", "stop", ServiceName)
