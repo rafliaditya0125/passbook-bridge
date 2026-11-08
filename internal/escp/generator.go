@@ -32,6 +32,11 @@ func GeneratePrintCommand(req *model.PrintRequest, opts GeneratorOptions) []byte
 	// 2. Aktifkan font condensed agar muat dalam buku tabungan
 	buf.Write(CmdCondensedOn)
 
+	// 3. Atur panjang halaman fisik buku jika total baris ditentukan (ESC C n)
+	if opts.Template != nil && opts.Template.GetTotalRows() > 0 && opts.Template.GetTotalRows() <= 127 {
+		buf.Write([]byte{0x1B, 0x43, byte(opts.Template.GetTotalRows())})
+	}
+
 	// Roadmap 1: Line skipping jika baris_ke > 1 ditentukan, atau jika template memiliki TopMargin
 	lineOffset := 0
 	if req.BarisKe > 1 {

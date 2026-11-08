@@ -189,10 +189,16 @@ func FormatLineWithTemplate(req *model.PrintRequest, tmpl *config.LayoutTemplate
 		}
 
 		var rawVal string
-		switch col.FieldKey {
-		case "tanggal":
+		switch strings.ToLower(col.FieldKey) {
+		case "no", "nomor", "baris":
+			if req.BarisKe > 0 {
+				rawVal = fmt.Sprintf("%02d", req.BarisKe)
+			} else {
+				rawVal = "01"
+			}
+		case "tanggal", "tgl":
 			rawVal = strings.TrimSpace(FormatTanggal(req.Tanggal))
-		case "kode_transaksi", "sandi":
+		case "kode_transaksi", "sandi", "kode/sandi":
 			sandi, ok := jenisToSandi[jt]
 			if !ok {
 				if req.KodeTransaksi != "" {
@@ -212,9 +218,9 @@ func FormatLineWithTemplate(req *model.PrintRequest, tmpl *config.LayoutTemplate
 			}
 		case "saldo", "saldo_sesudah":
 			rawVal = FormatRupiah(req.SaldoSesudah.Float64())
-		case "petugas", "validasi":
+		case "petugas", "validasi", "teller", "paraf", "ket/paraf":
 			rawVal = strings.TrimSpace(req.Petugas)
-		case "keterangan":
+		case "keterangan", "uraian":
 			rawVal = strings.TrimSpace(req.Keterangan)
 		case "jenis_transaksi":
 			rawVal = strings.TrimSpace(req.JenisTransaksi)

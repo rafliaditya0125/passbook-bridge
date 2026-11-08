@@ -136,3 +136,109 @@ func TestPassbookCanvasWidget_DragInteractions(t *testing.T) {
 		t.Errorf("Expected dragMode 0 after DragEnd, got %d", w.dragMode)
 	}
 }
+
+func TestPassbookCanvasWidget_ExcelFeatures(t *testing.T) {
+	_ = test.NewApp()
+
+	// 1. Test Excel column letters
+	if getExcelColLetter(0) != "A" {
+		t.Errorf("Expected 0 -> A, got %s", getExcelColLetter(0))
+	}
+	if getExcelColLetter(1) != "B" {
+		t.Errorf("Expected 1 -> B, got %s", getExcelColLetter(1))
+	}
+	if getExcelColLetter(6) != "G" {
+		t.Errorf("Expected 6 -> G, got %s", getExcelColLetter(6))
+	}
+
+	// 2. Test Indonesian currency formatting
+	if formatIDRCurrency(0) != "0,00" {
+		t.Errorf("Expected 0,00, got %s", formatIDRCurrency(0))
+	}
+	if formatIDRCurrency(5000000) != "5.000.000,00" {
+		t.Errorf("Expected 5.000.000,00, got %s", formatIDRCurrency(5000000))
+	}
+	if formatIDRCurrency(100000) != "100.000,00" {
+		t.Errorf("Expected 100.000,00, got %s", formatIDRCurrency(100000))
+	}
+
+	// 3. Test Widget Target Row & Quick Adjust
+	tmpl := &config.LayoutTemplate{
+		ID:         "test_excel",
+		Name:       "Test Excel",
+		MaxColumns: 80,
+		Columns: []config.ColumnDef{
+			{ID: "c1", DisplayName: "No", ColStart: 0, ColWidth: 4},
+			{ID: "c2", DisplayName: "Tanggal", ColStart: 4, ColWidth: 11},
+		},
+	}
+
+	var rowNotified int
+	w := NewPassbookCanvasWidget(tmpl, nil, nil)
+	w.OnTargetRowChanged = func(row int) {
+		rowNotified = row
+	}
+
+	w.SetTargetRow(14)
+	if w.GetTargetRow() != 14 || rowNotified != 14 {
+		t.Errorf("Expected targetRow 14, got %d (notified: %d)", w.GetTargetRow(), rowNotified)
+	}
+
+	// 4. Test Quick Adjust Column Lebar & Tab X
+	w.SetSelectedColumn(1) // Select Tanggal
+	w.AdjustSelectedWidth(2)
+	if tmpl.Columns[1].ColWidth != 13 {
+		t.Errorf("Expected ColWidth 13, got %d", tmpl.Columns[1].ColWidth)
+	}
+
+	w.AdjustSelectedStart(1)
+	if tmpl.Columns[1].ColStart != 5 {
+		t.Errorf("Expected ColStart 5, got %d", tmpl.Columns[1].ColStart)
+	}
+
+	// 5. Test Sticky Mode
+	if !w.IsStickyMode() {
+		t.Errorf("Expected stickyMode true by default")
+	}
+	w.SetStickyMode(false)
+	if w.IsStickyMode() {
+		t.Errorf("Expected stickyMode false after toggle")
+	}
+}
+
+func TestPassbookCanvasWidget_BookSizeAndDimensions(t *testing.T) {
+	_ = test.NewApp()
+
+	tmpl := &config.LayoutTemplate{
+		ID:           "test_size",
+		Name:         "Test Size",
+		MaxColumns:   80,
+		TotalRows:    34,
+		PageWidthMM:  148.0,
+		PageHeightMM: 105.0,
+		Columns: []config.ColumnDef{
+			{ID: "c1", DisplayName: "No", ColStart: 0, ColWidth: 4},
+		},
+	}
+
+	w := NewPassbookCanvasWidget(tmpl, nil, nil)
+	_, _, paperW1, paperH1, _, _, _, _ := w.getGeometry()
+
+	// Sekarang ubah ke preset yang lebih besar (Buku Besar A5: 210 x 148 mm)
+	tmpl.PageWidthMM = 210.0
+	tmpl.PageHeightMM = 148.0
+	tmpl.TotalRows = 40
+	w.SetTemplate(tmpl)
+
+	_, _, paperW2, paperH2, _, _, _, _ := w.getGeometry()
+
+	if paperW2 <= paperW1 {
+		t.Errorf("Ukuran kertas tidak bertambah: paperW1=%f, paperW2=%f", paperW1, paperW2)
+	}
+	if paperH2 <= paperH1 {
+		t.Errorf("Tinggi kertas tidak bertambah: paperH1=%f, paperH2=%f", paperH1, paperH2)
+	}
+	if w.GetDisplayRows() != 34 { // capped at 34 display rows
+		t.Errorf("Expected display rows 34, got %d", w.GetDisplayRows())
+	}
+}
