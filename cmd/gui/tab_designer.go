@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
+	"image/color"
 	"strconv"
 	"strings"
 	"time"
 
 	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
@@ -58,6 +60,93 @@ var standardBookSizes = []BookSizePreset{
 	},
 }
 
+// clickableFontBox adalah widget card interaktif untuk menampilkan status font dan membuka dialog font via klik / double click
+type clickableFontBox struct {
+	widget.BaseWidget
+	titleLabel   *canvas.Text
+	descLabel    *canvas.Text
+	OnOpenDialog func()
+}
+
+func newClickableFontBox(onOpenDialog func()) *clickableFontBox {
+	b := &clickableFontBox{
+		OnOpenDialog: onOpenDialog,
+		titleLabel:   canvas.NewText("Arial Narrow, 10 pt", color.NRGBA{R: 15, G: 23, B: 42, A: 255}),
+		descLabel:    canvas.NewText("Regular • 17 CPI", color.NRGBA{R: 100, G: 116, B: 139, A: 255}),
+	}
+	b.titleLabel.TextSize = 13.0
+	b.titleLabel.TextStyle = fyne.TextStyle{Bold: true}
+	b.descLabel.TextSize = 10.5
+	b.ExtendBaseWidget(b)
+	return b
+}
+
+func (b *clickableFontBox) SetFontInfo(family string, size int, style string, pitch int) {
+	if family == "" {
+		family = "Arial Narrow"
+	}
+	if size <= 0 {
+		size = 10
+	}
+	if style == "" {
+		style = "Regular"
+	}
+	if pitch <= 0 {
+		pitch = 17
+	}
+	b.titleLabel.Text = fmt.Sprintf("🔤 %s, %d pt", family, size)
+	b.descLabel.Text = fmt.Sprintf("Gaya: %s  •  Pitch: %d CPI Dot-Matrix", style, pitch)
+
+	isMono := isMonospaceFont(family)
+	isBold := strings.Contains(strings.ToLower(style), "bold")
+	isItalic := strings.Contains(strings.ToLower(style), "italic")
+	b.titleLabel.TextStyle = getSafeTextStyle(isMono, isBold, isItalic)
+	b.Refresh()
+}
+
+func (b *clickableFontBox) CreateRenderer() fyne.WidgetRenderer {
+	bg := canvas.NewRectangle(color.NRGBA{R: 248, G: 250, B: 252, A: 255})
+	border := canvas.NewRectangle(color.Transparent)
+	border.StrokeColor = color.NRGBA{R: 203, G: 213, B: 225, A: 255}
+	border.StrokeWidth = 1.0
+
+	content := container.NewVBox(b.titleLabel, b.descLabel)
+	padded := container.NewPadded(content)
+	stack := container.NewStack(bg, border, padded)
+
+	return widget.NewSimpleRenderer(stack)
+}
+
+func (b *clickableFontBox) Tapped(pe *fyne.PointEvent) {
+	if b.OnOpenDialog != nil {
+		b.OnOpenDialog()
+	}
+}
+
+func (b *clickableFontBox) DoubleTapped(pe *fyne.PointEvent) {
+	if b.OnOpenDialog != nil {
+		b.OnOpenDialog()
+	}
+}
+
+// doubleClickEntry adalah widget Entry kustom yang mendukung event DoubleTapped (klik 2x)
+type doubleClickEntry struct {
+	widget.Entry
+	OnOpenDialog func()
+}
+
+func newDoubleClickEntry(onOpenDialog func()) *doubleClickEntry {
+	e := &doubleClickEntry{OnOpenDialog: onOpenDialog}
+	e.ExtendBaseWidget(e)
+	return e
+}
+
+func (e *doubleClickEntry) DoubleTapped(pe *fyne.PointEvent) {
+	if e.OnOpenDialog != nil {
+		e.OnOpenDialog()
+	}
+}
+
 func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 	activeTmpl := state.Layouts.GetActiveTemplate()
 	if activeTmpl == nil {
@@ -94,6 +183,9 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 	var selectBookSize *widget.Select
 	var entryTotalRows *widget.Entry
 	var entryTopMargin *widget.Entry
+	var entryFontSize *doubleClickEntry
+	var fontBoxWidget *clickableFontBox
+	var updateFontUI func()
 
 	updateBookSizeUI := func() {
 		if activeTmpl == nil {
@@ -127,6 +219,9 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 		}
 		if entryTopMargin != nil {
 			entryTopMargin.SetText(fmt.Sprintf("%d", activeTmpl.TopMargin))
+		}
+		if updateFontUI != nil {
+			updateFontUI()
 		}
 	}
 
@@ -440,13 +535,244 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 	entrySpasiAntar := widget.NewEntry()
 	entrySpasiAntar.SetText("15")
 
-	entryFontSize := widget.NewEntry()
-	entryFontSize.SetText("10")
+	showFontDialog := func() {
+		if activeTmpl == nil {
+			return
+		}
 
-	entryFontFamily := widget.NewEntry()
-	entryFontFamily.SetText("Arial Narrow / ESC/P")
+		fontFamilies := []string{
+			"Arial Narrow",
+			"Courier New",
+			"Consolas",
+			"Lucida Console",
+			"Tahoma",
+			"Segoe UI",
+			"Times New Roman",
+			"ESC/P Draft",
+		}
 
-	fontBox := container.NewGridWithColumns(2, entryFontSize, entryFontFamily)
+		cleanFamilyName := func(val string) string {
+			for _, f := range fontFamilies {
+				if strings.EqualFold(strings.TrimSpace(val), f) || strings.Contains(strings.ToLower(val), strings.ToLower(f)) {
+					return f
+				}
+			}
+			return strings.TrimSpace(val)
+		}
+
+		selectFamily := widget.NewSelect(fontFamilies, nil)
+		curFam := cleanFamilyName(activeTmpl.GetFontFamily())
+		selectFamily.SetSelected(curFam)
+		if selectFamily.Selected == "" {
+			selectFamily.SetSelected("Arial Narrow")
+		}
+
+		fontSizes := []string{"8", "9", "10", "11", "12", "14", "16", "18", "20"}
+		selectSize := widget.NewSelect(fontSizes, nil)
+		selectSize.SetSelected(fmt.Sprintf("%d", activeTmpl.GetFontSize()))
+
+		fontStyles := []string{"Regular", "Bold", "Italic", "Bold Italic"}
+		selectStyle := widget.NewSelect(fontStyles, nil)
+		curStyle := activeTmpl.GetFontStyle()
+		if curStyle != "" {
+			selectStyle.SetSelected(curStyle)
+		} else {
+			selectStyle.SetSelected("Regular")
+		}
+
+		fontPitches := []string{
+			"17 CPI (Condensed - Standar Buku Tabungan)",
+			"15 CPI (Rapat)",
+			"12 CPI (Elite - Sedang)",
+			"10 CPI (Pica - Lebar)",
+		}
+		selectPitch := widget.NewSelect(fontPitches, nil)
+		switch activeTmpl.GetFontPitchCPI() {
+		case 10:
+			selectPitch.SetSelected("10 CPI (Pica - Lebar)")
+		case 12:
+			selectPitch.SetSelected("12 CPI (Elite - Sedang)")
+		case 15:
+			selectPitch.SetSelected("15 CPI (Rapat)")
+		default:
+			selectPitch.SetSelected("17 CPI (Condensed - Standar Buku Tabungan)")
+		}
+
+		// Kotak Preview Sampel Teks
+		previewText := canvas.NewText("05-10-2021  K01  Setoran Tunai   5.000.000,00   adm", color.NRGBA{R: 15, G: 23, B: 42, A: 255})
+		lblPreviewInfo := canvas.NewText("", color.NRGBA{R: 71, G: 85, B: 105, A: 255})
+		lblPreviewInfo.TextSize = 10.5
+
+		updateSamplePreview := func() {
+			fam := cleanFamilyName(selectFamily.Selected)
+			isMono := isMonospaceFont(fam)
+			st := strings.ToLower(selectStyle.Selected)
+			isBold := strings.Contains(st, "bold")
+			isItalic := strings.Contains(st, "italic")
+
+			previewText.TextStyle = getSafeTextStyle(isMono, isBold, isItalic)
+			if s, err := strconv.Atoi(selectSize.Selected); err == nil && s >= 6 {
+				previewText.TextSize = float32(s) + 3.0 // skala agar jelas di dialog
+			}
+			previewText.Refresh()
+
+			famType := "Sans-Serif Proporsional"
+			if isMono {
+				famType = "Fixed-Width Monospace"
+			}
+			lblPreviewInfo.Text = fmt.Sprintf("Karakteristik: %s  •  Gaya: %s  •  Ukuran: %s pt",
+				famType, selectStyle.Selected, selectSize.Selected)
+			lblPreviewInfo.Refresh()
+		}
+
+		selectFamily.OnChanged = func(string) { updateSamplePreview() }
+		selectSize.OnChanged = func(string) { updateSamplePreview() }
+		selectStyle.OnChanged = func(string) { updateSamplePreview() }
+		selectPitch.OnChanged = func(string) { updateSamplePreview() }
+		updateSamplePreview()
+
+		previewBox := container.NewPadded(container.NewVBox(
+			container.NewCenter(previewText),
+			container.NewCenter(lblPreviewInfo),
+		))
+		previewCard := widget.NewCard("Pratinjau Font", "", previewBox)
+
+		form := widget.NewForm(
+			widget.NewFormItem("Jenis Font (Font Family)", selectFamily),
+			widget.NewFormItem("Ukuran Font (pt)", selectSize),
+			widget.NewFormItem("Gaya Huruf (Style)", selectStyle),
+			widget.NewFormItem("Pitch Dot-Matrix (CPI)", selectPitch),
+		)
+
+		d := showCustomConfirm(
+			"Pilih Font Buku Tabungan",
+			"Terapkan", "Batal",
+			container.NewVBox(
+				form,
+				widget.NewSeparator(),
+				previewCard,
+			),
+			func(confirmed bool) {
+				if !confirmed {
+					return
+				}
+				activeTmpl.FontFamily = cleanFamilyName(selectFamily.Selected)
+				if s, err := strconv.Atoi(selectSize.Selected); err == nil {
+					activeTmpl.FontSize = s
+				}
+				activeTmpl.FontStyle = selectStyle.Selected
+
+				switch {
+				case strings.HasPrefix(selectPitch.Selected, "10"):
+					activeTmpl.FontPitchCPI = 10
+				case strings.HasPrefix(selectPitch.Selected, "12"):
+					activeTmpl.FontPitchCPI = 12
+				case strings.HasPrefix(selectPitch.Selected, "15"):
+					activeTmpl.FontPitchCPI = 15
+				default:
+					activeTmpl.FontPitchCPI = 17
+				}
+
+				if updateFontUI != nil {
+					updateFontUI()
+				}
+
+				if canvasWidget != nil {
+					canvasWidget.Refresh()
+				}
+				_ = config.SaveLayoutConfig(state.LayoutsPath, state.Layouts)
+				state.NotifyStateChanged()
+				state.Log(fmt.Sprintf("Font buku tabungan diubah: %s %dpt %s (%d CPI)",
+					activeTmpl.GetFontFamily(), activeTmpl.GetFontSize(), activeTmpl.GetFontStyle(), activeTmpl.GetFontPitchCPI()))
+			},
+			win,
+		)
+		d.Show()
+	}
+
+	fontBoxWidget = newClickableFontBox(showFontDialog)
+
+	entryFontSize = newDoubleClickEntry(showFontDialog)
+	entryFontSize.SetText(fmt.Sprintf("%d", activeTmpl.GetFontSize()))
+	entryFontSize.OnChanged = func(s string) {
+		if isUpdatingUI || activeTmpl == nil {
+			return
+		}
+		if v, err := strconv.Atoi(strings.TrimSpace(s)); err == nil && v >= 6 && v <= 24 {
+			activeTmpl.FontSize = v
+			if fontBoxWidget != nil {
+				fontBoxWidget.SetFontInfo(
+					activeTmpl.GetFontFamily(),
+					activeTmpl.GetFontSize(),
+					activeTmpl.GetFontStyle(),
+					activeTmpl.GetFontPitchCPI(),
+				)
+			}
+			if canvasWidget != nil {
+				canvasWidget.Refresh()
+			}
+			_ = config.SaveLayoutConfig(state.LayoutsPath, state.Layouts)
+			state.NotifyStateChanged()
+		}
+	}
+
+	btnFontMinus := widget.NewButton("-", func() {
+		if activeTmpl.GetFontSize() > 6 {
+			activeTmpl.FontSize = activeTmpl.GetFontSize() - 1
+			if updateFontUI != nil {
+				updateFontUI()
+			}
+			if canvasWidget != nil {
+				canvasWidget.Refresh()
+			}
+			_ = config.SaveLayoutConfig(state.LayoutsPath, state.Layouts)
+			state.NotifyStateChanged()
+		}
+	})
+
+	btnFontPlus := widget.NewButton("+", func() {
+		if activeTmpl.GetFontSize() < 24 {
+			activeTmpl.FontSize = activeTmpl.GetFontSize() + 1
+			if updateFontUI != nil {
+				updateFontUI()
+			}
+			if canvasWidget != nil {
+				canvasWidget.Refresh()
+			}
+			_ = config.SaveLayoutConfig(state.LayoutsPath, state.Layouts)
+			state.NotifyStateChanged()
+		}
+	})
+
+	updateFontUI = func() {
+		if activeTmpl == nil {
+			return
+		}
+		if fontBoxWidget != nil {
+			fontBoxWidget.SetFontInfo(
+				activeTmpl.GetFontFamily(),
+				activeTmpl.GetFontSize(),
+				activeTmpl.GetFontStyle(),
+				activeTmpl.GetFontPitchCPI(),
+			)
+		}
+		if entryFontSize != nil {
+			isUpdatingUI = true
+			entryFontSize.SetText(fmt.Sprintf("%d", activeTmpl.GetFontSize()))
+			isUpdatingUI = false
+		}
+	}
+	updateFontUI()
+
+	btnPickFont := widget.NewButtonWithIcon("Pilih Font...", theme.ColorPaletteIcon(), showFontDialog)
+
+	fontSizeControls := container.NewBorder(nil, nil, widget.NewLabel("Ukuran (pt):"), container.NewHBox(btnFontMinus, btnFontPlus), entryFontSize)
+
+	fontBox := container.NewVBox(
+		container.NewBorder(nil, nil, nil, btnPickFont, fontBoxWidget),
+		fontSizeControls,
+		widget.NewLabelWithStyle("💡 Klik 2x kotak font atau klik 'Pilih Font...' untuk ganti jenis font, gaya, & pitch CPI", fyne.TextAlignLeading, fyne.TextStyle{Italic: true}),
+	)
 
 	printSettingsForm := widget.NewForm(
 		widget.NewFormItem("Template Buku", templateRow),

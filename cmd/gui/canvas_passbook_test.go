@@ -242,3 +242,61 @@ func TestPassbookCanvasWidget_BookSizeAndDimensions(t *testing.T) {
 		t.Errorf("Expected display rows 34, got %d", w.GetDisplayRows())
 	}
 }
+
+func TestPassbookCanvasWidget_FontAndDoubleClick(t *testing.T) {
+	_ = test.NewApp()
+
+	tmpl := &config.LayoutTemplate{
+		ID:         "test_font",
+		Name:       "Test Font",
+		MaxColumns: 80,
+		FontSize:   12,
+		FontFamily: "Courier New",
+		FontStyle:  "Bold",
+		Columns: []config.ColumnDef{
+			{ID: "c1", DisplayName: "No", ColStart: 0, ColWidth: 4},
+		},
+	}
+
+	if tmpl.GetFontSize() != 12 {
+		t.Errorf("Expected FontSize 12, got %d", tmpl.GetFontSize())
+	}
+	if tmpl.GetFontFamily() != "Courier New" {
+		t.Errorf("Expected FontFamily Courier New, got %s", tmpl.GetFontFamily())
+	}
+
+	// Test double-click entry trigger
+	var doubleTapped bool
+	entry := newDoubleClickEntry(func() {
+		doubleTapped = true
+	})
+	entry.DoubleTapped(&fyne.PointEvent{})
+	if !doubleTapped {
+		t.Errorf("Expected DoubleTapped to trigger callback")
+	}
+
+	// Test clickable font box
+	var boxTapped bool
+	box := newClickableFontBox(func() {
+		boxTapped = true
+	})
+	box.SetFontInfo("Courier New", 12, "Bold", 17)
+	box.DoubleTapped(&fyne.PointEvent{})
+	if !boxTapped {
+		t.Errorf("Expected clickableFontBox DoubleTapped to trigger callback")
+	}
+
+	// Test Monospace detection
+	if !isMonospaceFont("Courier New") {
+		t.Errorf("Expected Courier New to be monospace")
+	}
+	if !isMonospaceFont("Consolas") {
+		t.Errorf("Expected Consolas to be monospace")
+	}
+	if isMonospaceFont("Arial Narrow") {
+		t.Errorf("Expected Arial Narrow to be proportional")
+	}
+	if isMonospaceFont("Tahoma") {
+		t.Errorf("Expected Tahoma to be proportional")
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"testing"
 
+	"passbook-bridge/internal/config"
 	"passbook-bridge/internal/model"
 )
 
@@ -158,5 +159,55 @@ func TestGeneratePrintCommand(t *testing.T) {
 	// Periksa CRLF dan form feed di akhir
 	if !bytes.HasSuffix(raw, []byte{0x0D, 0x0A, 0x0C}) {
 		t.Error("Output harus diakhiri dengan CR LF FF saat EnableEject = true")
+	}
+}
+
+func TestGeneratePrintCommand_FontOptions(t *testing.T) {
+	req := &model.PrintRequest{
+		BarisKe:        5,
+		Tanggal:        "2026-11-08",
+		KodeTransaksi:  "K01",
+		JenisTransaksi: "setor",
+		Jumlah:         500000,
+		SaldoSesudah:   500000,
+		Petugas:        "teller",
+	}
+
+	tmpl := &config.LayoutTemplate{
+		ID:           "test_font_escp",
+		FontFamily:   "Courier New",
+		FontStyle:    "Bold",
+		FontPitchCPI: 12, // 12 CPI -> ESC M
+		TotalRows:    34, // ESC C 34
+		Columns: []config.ColumnDef{
+			{ID: "c1", FieldKey: "tanggal", ColStart: 0, ColWidth: 10},
+		},
+	}
+
+	raw := GeneratePrintCommand(req, GeneratorOptions{Template: tmpl})
+
+	// Cek ESC M (0x1B, 0x4D) untuk 12 CPI
+	if !bytes.Contains(raw, []byte{0x1B, 0x4D}) {
+		t.Errorf("Expected 12 CPI command ESC M (1B 4D)")
+	}
+
+	// Cek ESC k 2 (0x1B, 0x6B, 0x02) untuk Courier typeface
+	if !bytes.Contains(raw, []byte{0x1B, 0x6B, 0x02}) {
+		t.Errorf("Expected Courier typeface command ESC k 2 (1B 6B 02)")
+	}
+
+	// Cek ESC E (0x1B, 0x45) untuk Bold on
+	if !bytes.Contains(raw, []byte{0x1B, 0x45}) {
+		t.Errorf("Expected Bold on command ESC E (1B 45)")
+	}
+
+	// Cek ESC F (0x1B, 0x46) untuk Bold off di akhir
+	if !bytes.Contains(raw, []byte{0x1B, 0x46}) {
+		t.Errorf("Expected Bold off command ESC F (1B 46)")
+	}
+
+	// Cek ESC C 34 (0x1B, 0x43, 0x22) untuk panjang halaman 34 baris
+	if !bytes.Contains(raw, []byte{0x1B, 0x43, 34}) {
+		t.Errorf("Expected Page Length command ESC C 34 (1B 43 22)")
 	}
 }

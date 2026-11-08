@@ -111,6 +111,28 @@ func formatIDRCurrency(val int64) string {
 	return sign + strings.Join(parts, ".") + ",00"
 }
 
+func isMonospaceFont(name string) bool {
+	f := strings.ToLower(name)
+	return strings.Contains(f, "courier") ||
+		strings.Contains(f, "consolas") ||
+		strings.Contains(f, "mono") ||
+		strings.Contains(f, "lucida console") ||
+		strings.Contains(f, "draft") ||
+		strings.Contains(f, "esc/p")
+}
+
+// getSafeTextStyle mengembalikan TextStyle yang kompatibel dengan Fyne theme renderer
+func getSafeTextStyle(isMono, isBold, isItalic bool) fyne.TextStyle {
+	if isMono {
+		// Fyne default theme tidak menyediakan font file Monospace-Bold atau Monospace-Italic
+		return fyne.TextStyle{Monospace: true}
+	}
+	return fyne.TextStyle{
+		Bold:   isBold,
+		Italic: isItalic,
+	}
+}
+
 func scaleFont(base float32, s float32) float32 {
 	sz := base * s
 	if sz < 7.0 {
@@ -375,7 +397,20 @@ func (w *PassbookCanvasWidget) getGeometry() (paperX, paperY, paperW, paperH, pr
 	printW = paperW - 32*s - rowHdrW // printable width
 
 	maxCols := 80
-	if w.tmpl != nil && w.tmpl.MaxColumns > 0 {
+	if w.tmpl != nil && w.tmpl.FontPitchCPI > 0 {
+		switch w.tmpl.FontPitchCPI {
+		case 10:
+			maxCols = 58 // 10 CPI Pica (Font Lebar)
+		case 12:
+			maxCols = 70 // 12 CPI Elite (Font Standar)
+		case 15:
+			maxCols = 85 // 15 CPI (Font Rapat)
+		case 17:
+			maxCols = 96 // 17 CPI Condensed (Standar Blangko Buku Tabungan)
+		default:
+			maxCols = 80
+		}
+	} else if w.tmpl != nil && w.tmpl.MaxColumns > 0 {
 		maxCols = w.tmpl.MaxColumns
 	}
 	charW = printW / float32(maxCols)
@@ -896,8 +931,9 @@ func (r *passbookCanvasRenderer) rebuildObjects() {
 	if !w.stickyMode {
 		modeStr = "Bebas"
 	}
-	infoStr := fmt.Sprintf("📏 %0.1f × %0.1f cm (%d Baris)  •  Tab X: %d  •  Lebar: %d ch (%0.1f mm)  •  Rata: %s  •  Mode: %s  •  Target: Baris %02d",
-		dimW/10.0, dimH/10.0, tmpl.GetTotalRows(), selCol.ColStart, selCol.ColWidth, mmWidth, selCol.Align, modeStr, w.GetTargetRow())
+	fontStr := fmt.Sprintf("%s %dpt %s (%d CPI)", tmpl.GetFontFamily(), tmpl.GetFontSize(), tmpl.GetFontStyle(), tmpl.GetFontPitchCPI())
+	infoStr := fmt.Sprintf("📏 %0.1f × %0.1f cm (%d Baris)  •  🔤 %s  •  Tab X: %d  •  Lebar: %d ch (%0.1f mm)  •  Rata: %s  •  Mode: %s  •  Target: Baris %02d",
+		dimW/10.0, dimH/10.0, tmpl.GetTotalRows(), fontStr, selCol.ColStart, selCol.ColWidth, mmWidth, selCol.Align, modeStr, w.GetTargetRow())
 	infoText := canvas.NewText(infoStr, color.NRGBA{R: 71, G: 85, B: 105, A: 255})
 	infoText.TextSize = scaleFont(8.5, s)
 	infoText.Move(fyne.NewPos(paperX+110*s, paperY+13*s))
@@ -1087,8 +1123,17 @@ func (r *passbookCanvasRenderer) rebuildObjects() {
 			if sampleData != nil {
 				valStr := getFormattedFieldValue(rIdx, sampleData, col.FieldKey)
 				cellText := canvas.NewText(valStr, color.NRGBA{R: 15, G: 23, B: 42, A: 255})
-				cellText.TextStyle = fyne.TextStyle{Monospace: true}
-				cellText.TextSize = scaleFont(9.5, s)
+
+				// Terapkan Monospace vs Proportional, Bold, Italic, dan ukuran font
+				isMono := isMonospaceFont(tmpl.GetFontFamily())
+				fStyleLower := strings.ToLower(tmpl.GetFontStyle())
+				isBold := strings.Contains(fStyleLower, "bold")
+				isItalic := strings.Contains(fStyleLower, "italic")
+
+				cellText.TextStyle = getSafeTextStyle(isMono, isBold, isItalic)
+
+				cellFontSize := float32(tmpl.GetFontSize())
+				cellText.TextSize = scaleFont(cellFontSize, s)
 
 				textW := float32(len([]rune(valStr))) * charW
 				var textX float32

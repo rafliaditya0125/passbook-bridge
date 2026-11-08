@@ -6,11 +6,9 @@
       "name": "Buku Tabungan Standar (34 Baris)",
       "max_columns": 80,
       "total_rows": 34,
-      "page_width_mm": 148.0,
-      "page_height_mm": 105.0,
-      "book_size_name": "14,8 x 10,5 cm (Standar BPR / Koperasi)",
-      "top_margin": 0,
-      "left_margin": 0,
+      "page_width_mm": 150,
+      "page_height_mm": 100,
+      "book_size_name": "15,0 x 10,0 cm (Bank Mini / Sekolah)",
       "columns": [
         {
           "id": "col_no",
@@ -75,7 +73,6 @@
       "name": "Pengaturan Tabungan (Current X: 0, 11, 70, 115...)",
       "max_columns": 420,
       "top_margin": 52,
-      "left_margin": 0,
       "columns": [
         {
           "id": "col_no",

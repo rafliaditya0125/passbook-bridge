@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 )
 
 // ColumnDef merepresentasikan definisi satu kolom pada buku tabungan.
@@ -25,9 +26,50 @@ type LayoutTemplate struct {
 	PageWidthMM  float64     `json:"page_width_mm,omitempty"`  // Lebar fisik halaman buku tabungan dalam mm (misal 148.0)
 	PageHeightMM float64     `json:"page_height_mm,omitempty"` // Tinggi fisik halaman buku tabungan dalam mm (misal 105.0)
 	BookSizeName string      `json:"book_size_name,omitempty"` // Nama preset ukuran (misal "14,8 x 10,5 cm")
+	FontSize     int         `json:"font_size,omitempty"`      // Ukuran font teks (default 10)
+	FontFamily   string      `json:"font_family,omitempty"`    // Nama jenis font (misal "Arial Narrow", "Courier New")
+	FontStyle    string      `json:"font_style,omitempty"`     // Gaya font: "Regular", "Bold", "Italic"
+	FontPitchCPI int         `json:"font_pitch_cpi,omitempty"` // Pitch ESC/P: 10, 12, 15, 17 CPI
 	TopMargin    int         `json:"top_margin,omitempty"`     // offset baris/margin atas (baris ke-n)
 	LeftMargin   int         `json:"left_margin,omitempty"`    // offset kolom/margin kiri
 	Columns      []ColumnDef `json:"columns"`
+}
+
+// GetFontSize mengembalikan ukuran font template (default 10 pt).
+func (t *LayoutTemplate) GetFontSize() int {
+	if t != nil && t.FontSize >= 6 && t.FontSize <= 24 {
+		return t.FontSize
+	}
+	return 10
+}
+
+// GetFontFamily mengembalikan jenis font template (default "Arial Narrow").
+func (t *LayoutTemplate) GetFontFamily() string {
+	if t != nil && t.FontFamily != "" {
+		// Bersihkan jika ada format slash peninggalan "Family / Style"
+		parts := strings.Split(t.FontFamily, "/")
+		cleaned := strings.TrimSpace(parts[0])
+		if cleaned != "" {
+			return cleaned
+		}
+	}
+	return "Arial Narrow"
+}
+
+// GetFontStyle mengembalikan gaya font: "Regular", "Bold", "Italic", atau "Bold Italic".
+func (t *LayoutTemplate) GetFontStyle() string {
+	if t != nil && t.FontStyle != "" {
+		return t.FontStyle
+	}
+	return "Regular"
+}
+
+// GetFontPitchCPI mengembalikan kerapatan karakter per inci (default 17 CPI Condensed).
+func (t *LayoutTemplate) GetFontPitchCPI() int {
+	if t != nil && t.FontPitchCPI > 0 {
+		return t.FontPitchCPI
+	}
+	return 17
 }
 
 // GetPageDimensions mengembalikan dimensi fisik buku tabungan (lebar & tinggi dalam mm).
@@ -66,6 +108,10 @@ func DefaultLayoutConfig() *LayoutConfig {
 				PageWidthMM:  148.0,
 				PageHeightMM: 105.0,
 				BookSizeName: "14,8 x 10,5 cm (Standar BPR / Koperasi)",
+				FontSize:     10,
+				FontFamily:   "Arial Narrow",
+				FontStyle:    "Regular",
+				FontPitchCPI: 17,
 				TopMargin:    0,
 				LeftMargin:   0,
 				Columns: []ColumnDef{
