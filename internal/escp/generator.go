@@ -71,10 +71,11 @@ func GeneratePrintCommand(req *model.PrintRequest, opts GeneratorOptions) []byte
 		buf.Write([]byte{0x1B, 0x43, byte(opts.Template.GetTotalRows())})
 	}
 
-	// Roadmap 1: Line skipping jika baris_ke > 1 ditentukan, atau jika template memiliki TopMargin
+	// Roadmap 1: Line skipping jika target baris > 1 ditentukan, atau jika template memiliki TopMargin
 	lineOffset := 0
-	if req.BarisKe > 1 {
-		lineOffset = req.BarisKe - 1
+	targetBaris := req.GetBaris()
+	if targetBaris > 1 {
+		lineOffset = targetBaris - 1
 	} else if opts.Template != nil && opts.Template.TopMargin > 0 {
 		lineOffset = opts.Template.TopMargin
 	}

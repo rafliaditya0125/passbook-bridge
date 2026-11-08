@@ -243,7 +243,7 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 			entryTargetRow.SetText(fmt.Sprintf("%d", row))
 			isUpdatingUI = false
 		}
-		sampleReq.BarisKe = row
+		sampleReq.SetBaris(row)
 		sampleReq.KodeTransaksi = fmt.Sprintf("K%02d", row)
 		sampleReq.Keterangan = fmt.Sprintf("Setoran Target Baris %d", row)
 	}
@@ -510,7 +510,7 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 		}
 		if v, err := strconv.Atoi(strings.TrimSpace(s)); err == nil && v >= 1 && v <= 34 {
 			canvasWidget.SetTargetRow(v)
-			sampleReq.BarisKe = v
+			sampleReq.SetBaris(v)
 			sampleReq.KodeTransaksi = fmt.Sprintf("K%02d", v)
 			sampleReq.Keterangan = fmt.Sprintf("Setoran Target Baris %d", v)
 		}
@@ -1218,7 +1218,7 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 		}
 
 		targetRow := canvasWidget.GetTargetRow()
-		sampleReq.BarisKe = targetRow
+		sampleReq.SetBaris(targetRow)
 		sampleReq.KodeTransaksi = fmt.Sprintf("K%02d", targetRow)
 		sampleReq.Keterangan = fmt.Sprintf("Setoran Target Baris %d", targetRow)
 

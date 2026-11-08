@@ -37,14 +37,20 @@ func FormatTanggal(raw string) string {
 	}
 
 	formats := []string{
+		"02/01/2006 15:04:05",
+		"02/01/2006 15:04",
+		"02/01/2006",
+		"02-01-2006 15:04:05",
+		"02-01-2006 15:04",
+		"02-01-2006",
 		"2006-01-02 15:04:05",
 		"2006-01-02T15:04:05Z07:00",
 		"2006-01-02T15:04:05",
 		"2006-01-02",
-		"02/01/2006",
 		"02/01/06",
-		"02-01-2006",
 		"02-01-06",
+		"2006/01/02 15:04:05",
+		"2006/01/02",
 	}
 
 	var parsed time.Time
@@ -191,23 +197,22 @@ func FormatLineWithTemplate(req *model.PrintRequest, tmpl *config.LayoutTemplate
 		var rawVal string
 		switch strings.ToLower(col.FieldKey) {
 		case "no", "nomor", "baris":
-			if req.BarisKe > 0 {
-				rawVal = fmt.Sprintf("%02d", req.BarisKe)
+			barisTarget := req.GetBaris()
+			if barisTarget > 0 {
+				rawVal = fmt.Sprintf("%02d", barisTarget)
 			} else {
 				rawVal = "01"
 			}
 		case "tanggal", "tgl":
 			rawVal = strings.TrimSpace(FormatTanggal(req.Tanggal))
-		case "kode_transaksi", "sandi", "kode/sandi":
-			sandi, ok := jenisToSandi[jt]
-			if !ok {
-				if req.KodeTransaksi != "" {
-					sandi = req.KodeTransaksi
-				} else {
-					sandi = strings.ToUpper(req.JenisTransaksi)
-				}
+		case "kode_transaksi", "sandi", "kode/sandi", "kode":
+			if strings.TrimSpace(req.KodeTransaksi) != "" {
+				rawVal = strings.TrimSpace(req.KodeTransaksi)
+			} else if sandi, ok := jenisToSandi[jt]; ok {
+				rawVal = sandi
+			} else {
+				rawVal = strings.ToUpper(req.JenisTransaksi)
 			}
-			rawVal = sandi
 		case "debet":
 			if jt == "tarik" || jt == "biaya_admin" {
 				rawVal = formattedAmount
