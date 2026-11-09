@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"passbook-bridge/internal/config"
@@ -142,5 +143,52 @@ func TestHandlePrint_PrinterOffline(t *testing.T) {
 
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("Harusnya mengembalikan 503 Service Unavailable, dapat: %d", rec.Code)
+	}
+}
+
+func TestHandlePrint_ServerPayloadWithBarisAliases(t *testing.T) {
+	_, router, mockP := setupTestServer()
+
+	payload := `{
+      "tanggal": "08/11/2026 14:00:00",
+      "kode_transaksi": "BKM-0001",
+      "jenis_transaksi": "setor",
+      "jumlah": 50000,
+      "saldo_sesudah": 250000,
+      "keterangan": "BKM-0001",
+      "petugas": "Teller 1",
+      "baris": 5,
+      "line": 5,
+      "row": 5
+    }`
+
+	req := httptest.NewRequest(http.MethodPost, "/print", bytes.NewBufferString(payload))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("Harusnya mengembalikan 200 OK, dapat: %d, body: %s", rec.Code, rec.Body.String())
+	}
+
+	lastPrint := mockP.GetLastPrinted()
+	if len(lastPrint) == 0 {
+		t.Fatalf("MockPrinter tidak menerima bytes cetak")
+	}
+
+	// Baris 5 artinya offset 4 baris baru (CR LF x 4)
+	crlfCount := bytes.Count(lastPrint, []byte{0x0D, 0x0A})
+	if crlfCount < 4 {
+		t.Errorf("Expected at least 4 CRLFs for line skipping to line 5, got %d", crlfCount)
+	}
+
+	// Cek teks baris tercetak mengandung tanggal 08/11/26 dan BKM-0001
+	printStr := string(lastPrint)
+	if !strings.Contains(printStr, "08/11/26") {
+		t.Errorf("Hasil cetak harus memformat tanggal 08/11/2026 menjadi 08/11/26, got: %q", printStr)
+	}
+	if !strings.Contains(printStr, "BKM-00") {
+		t.Errorf("Hasil cetak harus memuat kode transaksi BKM-00, got: %q", printStr)
 	}
 }

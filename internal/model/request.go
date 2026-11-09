@@ -64,6 +64,53 @@ func (fa FlexAmount) Float64() float64 {
 	return float64(fa)
 }
 
+// FlexInt adalah tipe integer fleksibel yang dapat menerima angka JSON (int/float) atau string angka (misal 5 atau "5")
+type FlexInt int
+
+func (fi *FlexInt) UnmarshalJSON(data []byte) error {
+	data = bytes.TrimSpace(data)
+	if len(data) == 0 || string(data) == "null" {
+		*fi = 0
+		return nil
+	}
+	if data[0] != '"' {
+		var n int
+		if err := json.Unmarshal(data, &n); err == nil {
+			*fi = FlexInt(n)
+			return nil
+		}
+		var f float64
+		if err := json.Unmarshal(data, &f); err == nil {
+			*fi = FlexInt(int(f))
+			return nil
+		}
+	}
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return err
+	}
+	s = strings.TrimSpace(s)
+	if s == "" {
+		*fi = 0
+		return nil
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		if f, err2 := strconv.ParseFloat(s, 64); err2 == nil {
+			*fi = FlexInt(int(f))
+			return nil
+		}
+		return fmt.Errorf("integer tidak valid: %s", s)
+	}
+	*fi = FlexInt(n)
+	return nil
+}
+
+// Int mengembalikan nilai int murni.
+func (fi FlexInt) Int() int {
+	return int(fi)
+}
+
 // PrintRequest merepresentasikan payload body dari POST /print
 type PrintRequest struct {
 	Tanggal        string     `json:"tanggal"`
@@ -73,7 +120,40 @@ type PrintRequest struct {
 	SaldoSesudah   FlexAmount `json:"saldo_sesudah"`
 	Keterangan     string     `json:"keterangan"`
 	Petugas        string     `json:"petugas"`
-	BarisKe        int        `json:"baris_ke,omitempty"` // Opsional sesuai roadmap line skipping
+	BarisKe        FlexInt    `json:"baris_ke,omitempty"` // Alias: baris_ke
+	Baris          FlexInt    `json:"baris,omitempty"`    // Alias: baris
+	Line           FlexInt    `json:"line,omitempty"`     // Alias: line
+	Row            FlexInt    `json:"row,omitempty"`      // Alias: row
+}
+
+// GetBaris mengembalikan nomor baris target cetak dari alias baris_ke, baris, line, atau row (default 1).
+func (r *PrintRequest) GetBaris() int {
+	if r == nil {
+		return 1
+	}
+	if r.BarisKe > 0 {
+		return int(r.BarisKe)
+	}
+	if r.Baris > 0 {
+		return int(r.Baris)
+	}
+	if r.Line > 0 {
+		return int(r.Line)
+	}
+	if r.Row > 0 {
+		return int(r.Row)
+	}
+	return 1
+}
+
+// SetBaris mengisi seluruh field alias baris dengan nilai tertentu.
+func (r *PrintRequest) SetBaris(b int) {
+	if r != nil {
+		r.BarisKe = FlexInt(b)
+		r.Baris = FlexInt(b)
+		r.Line = FlexInt(b)
+		r.Row = FlexInt(b)
+	}
 }
 
 // Validate memeriksa apakah field wajib telah terpenuhi dan valid.

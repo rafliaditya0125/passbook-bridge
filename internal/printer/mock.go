@@ -11,10 +11,11 @@ import (
 
 // MockPrinter mengimplementasikan antarmuka Printer untuk testing dan simulasi lokal
 type MockPrinter struct {
-	name      string
-	connected bool
-	mu        sync.Mutex
-	logFile   string
+	name        string
+	connected   bool
+	mu          sync.Mutex
+	logFile     string
+	lastPrinted []byte
 }
 
 // NewMockPrinter membuat printer tiruan untuk development/simulasi
@@ -53,6 +54,8 @@ func (m *MockPrinter) Print(data []byte) error {
 		return fmt.Errorf("printer mock offline / tidak terhubung")
 	}
 
+	m.lastPrinted = append([]byte(nil), data...)
+
 	// Filter out non-printable control characters for display
 	var printable bytes.Buffer
 	for _, b := range data {
@@ -82,4 +85,11 @@ func (m *MockPrinter) Print(data []byte) error {
 
 func (m *MockPrinter) Close() error {
 	return nil
+}
+
+// GetLastPrinted mengembalikan byte terakhir yang dikirim ke printer mock (untuk kebutuhan unit test)
+func (m *MockPrinter) GetLastPrinted() []byte {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]byte(nil), m.lastPrinted...)
 }
