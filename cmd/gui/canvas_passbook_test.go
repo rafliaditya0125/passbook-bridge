@@ -104,6 +104,7 @@ func TestPassbookCanvasWidget_DragInteractions(t *testing.T) {
 	})
 
 	// Test case 2: Sticky Excel resize
+	w.SetStickyMode(true)
 	w.dragMode = 2
 	w.dragBorderIdx = 1 // Border 1 = right border of Col 1
 	w.dragStartX = 100
@@ -197,12 +198,12 @@ func TestPassbookCanvasWidget_ExcelFeatures(t *testing.T) {
 	}
 
 	// 5. Test Sticky Mode
-	if !w.IsStickyMode() {
-		t.Errorf("Expected stickyMode true by default")
-	}
-	w.SetStickyMode(false)
 	if w.IsStickyMode() {
-		t.Errorf("Expected stickyMode false after toggle")
+		t.Errorf("Expected stickyMode false by default")
+	}
+	w.SetStickyMode(true)
+	if !w.IsStickyMode() {
+		t.Errorf("Expected stickyMode true after toggle")
 	}
 }
 

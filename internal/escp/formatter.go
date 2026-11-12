@@ -177,7 +177,14 @@ func FormatLineWithTemplate(req *model.PrintRequest, tmpl *config.LayoutTemplate
 
 	maxCols := tmpl.MaxColumns
 	if maxCols <= 0 {
-		maxCols = 80
+		maxCols = 100
+	}
+	// Pastikan buffer cukup besar jika ada kolom yang melampaui maxCols
+	for _, col := range tmpl.Columns {
+		endPos := col.ColStart + tmpl.LeftMargin + col.ColWidth
+		if endPos > maxCols {
+			maxCols = endPos
+		}
 	}
 
 	// Buffer karakter terisi spasi sepanjang maxCols

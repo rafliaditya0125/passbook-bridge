@@ -1,14 +1,18 @@
 {
-  "active_template": "tabungan-standar-34",
+  "active_template": "bca-tahapan",
   "templates": [
     {
       "id": "tabungan-standar-34",
       "name": "Buku Tabungan Standar (34 Baris)",
-      "max_columns": 80,
-      "total_rows": 34,
+      "max_columns": 100,
+      "total_rows": 30,
       "page_width_mm": 150,
       "page_height_mm": 100,
       "book_size_name": "15,0 x 10,0 cm (Bank Mini / Sekolah)",
+      "font_size": 10,
+      "font_family": "Arial Narrow",
+      "font_style": "Regular",
+      "font_pitch_cpi": 17,
       "columns": [
         {
           "id": "col_no",
@@ -61,17 +65,17 @@
         {
           "id": "col_paraf",
           "field_key": "petugas",
-          "display_name": "Ket/Paraf",
-          "col_start": 64,
-          "col_width": 12,
-          "align": "center"
+          "display_name": "Validasi",
+          "col_start": 80,
+          "col_width": 14,
+          "align": "left"
         }
       ]
     },
     {
       "id": "tabungan-custom-x",
       "name": "Pengaturan Tabungan (Current X: 0, 11, 70, 115...)",
-      "max_columns": 420,
+      "max_columns": 100,
       "top_margin": 52,
       "columns": [
         {
@@ -138,14 +142,6 @@
       "max_columns": 80,
       "columns": [
         {
-          "id": "col_tanggal",
-          "field_key": "tanggal",
-          "display_name": "Tgl Transaksi",
-          "col_start": 0,
-          "col_width": 9,
-          "align": "left"
-        },
-        {
           "id": "col_sandi",
           "field_key": "kode_transaksi",
           "display_name": "Sandi",
@@ -166,7 +162,7 @@
           "field_key": "debet",
           "display_name": "Penarikan (D)",
           "col_start": 34,
-          "col_width": 10,
+          "col_width": 20,
           "align": "right"
         },
         {
@@ -174,7 +170,7 @@
           "field_key": "kredit",
           "display_name": "Setoran (K)",
           "col_start": 44,
-          "col_width": 11,
+          "col_width": 20,
           "align": "right"
         },
         {
@@ -182,7 +178,7 @@
           "field_key": "saldo_sesudah",
           "display_name": "Saldo Akhir",
           "col_start": 55,
-          "col_width": 11,
+          "col_width": 20,
           "align": "right"
         },
         {
@@ -198,61 +194,53 @@
     {
       "id": "bca-tahapan",
       "name": "BCA Tahapan Reguler (32 Baris)",
-      "max_columns": 80,
+      "max_columns": 100,
       "columns": [
         {
           "id": "col_tanggal",
           "field_key": "tanggal",
           "display_name": "Tanggal",
           "col_start": 0,
-          "col_width": 8,
+          "col_width": 15,
           "align": "left"
         },
         {
           "id": "col_sandi",
           "field_key": "kode_transaksi",
           "display_name": "Kode",
-          "col_start": 8,
+          "col_start": 15,
           "col_width": 6,
           "align": "center"
-        },
-        {
-          "id": "col_uraian",
-          "field_key": "keterangan",
-          "display_name": "Keterangan",
-          "col_start": 15,
-          "col_width": 20,
-          "align": "left"
         },
         {
           "id": "col_debet",
           "field_key": "debet",
           "display_name": "Debet",
-          "col_start": 37,
-          "col_width": 13,
+          "col_start": 21,
+          "col_width": 20,
           "align": "right"
         },
         {
           "id": "col_kredit",
           "field_key": "kredit",
           "display_name": "Kredit",
-          "col_start": 47,
-          "col_width": 13,
+          "col_start": 41,
+          "col_width": 20,
           "align": "right"
         },
         {
           "id": "col_saldo",
           "field_key": "saldo_sesudah",
           "display_name": "Saldo",
-          "col_start": 60,
-          "col_width": 14,
+          "col_start": 61,
+          "col_width": 20,
           "align": "right"
         },
         {
           "id": "col_petugas",
           "field_key": "petugas",
           "display_name": "Teller",
-          "col_start": 74,
+          "col_start": 81,
           "col_width": 6,
           "align": "center"
         }
@@ -387,21 +375,25 @@
     {
       "id": "tmpl-1792500970",
       "name": "Bank BJB",
-      "max_columns": 80,
+      "max_columns": 100,
+      "total_rows": 34,
+      "page_width_mm": 148,
+      "page_height_mm": 105,
+      "book_size_name": "14,8 x 10,5 cm (Standar BPR / Koperasi)",
       "columns": [
         {
           "id": "col_tanggal",
           "field_key": "tanggal",
           "display_name": "Tanggal",
           "col_start": 0,
-          "col_width": 9,
+          "col_width": 12,
           "align": "left"
         },
         {
           "id": "col_sandi",
           "field_key": "kode_transaksi",
           "display_name": "Sandi",
-          "col_start": 9,
+          "col_start": 13,
           "col_width": 5,
           "align": "left"
         },
@@ -409,23 +401,23 @@
           "id": "col_debet",
           "field_key": "debet",
           "display_name": "Debet",
-          "col_start": 14,
-          "col_width": 13,
+          "col_start": 20,
+          "col_width": 15,
           "align": "right"
         },
         {
           "id": "col_kredit",
           "field_key": "kredit",
           "display_name": "Kredit",
-          "col_start": 27,
-          "col_width": 13,
+          "col_start": 40,
+          "col_width": 15,
           "align": "right"
         },
         {
           "id": "col_saldo",
           "field_key": "saldo_sesudah",
           "display_name": "Saldo",
-          "col_start": 40,
+          "col_start": 60,
           "col_width": 15,
           "align": "right"
         },
@@ -433,8 +425,8 @@
           "id": "col_petugas",
           "field_key": "petugas",
           "display_name": "Validasi / Teller",
-          "col_start": 55,
-          "col_width": 12,
+          "col_start": 80,
+          "col_width": 15,
           "align": "left"
         }
       ]

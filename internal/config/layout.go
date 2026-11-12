@@ -103,7 +103,7 @@ func DefaultLayoutConfig() *LayoutConfig {
 			{
 				ID:           "tabungan-standar-34",
 				Name:         "Buku Tabungan Standar (34 Baris)",
-				MaxColumns:   80,
+				MaxColumns:   100,
 				TotalRows:    34,
 				PageWidthMM:  148.0,
 				PageHeightMM: 105.0,
@@ -166,10 +166,10 @@ func DefaultLayoutConfig() *LayoutConfig {
 					{
 						ID:          "col_paraf",
 						FieldKey:    "petugas",
-						DisplayName: "Ket/Paraf",
-						ColStart:    64,
-						ColWidth:    12,
-						Align:       "center",
+						DisplayName: "Validasi",
+						ColStart:    80,
+						ColWidth:    14,
+						Align:       "left",
 					},
 				},
 			},

@@ -10,7 +10,7 @@ simulated_passbook.log
 test_print.log
 *.log
 
-.dist/
+dist/
 config.json
 .agents
 .build

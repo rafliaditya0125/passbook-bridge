@@ -211,3 +211,98 @@ func TestGeneratePrintCommand_FontOptions(t *testing.T) {
 		t.Errorf("Expected Page Length command ESC C 34 (1B 43 22)")
 	}
 }
+
+func TestFormatLineWithTemplate_Max100ColumnsAndValidasiAt80(t *testing.T) {
+	req := &model.PrintRequest{
+		BarisKe:        5,
+		Tanggal:        "2026-11-12",
+		KodeTransaksi:  "BKM-0001",
+		JenisTransaksi: "setor",
+		Jumlah:         50000,
+		SaldoSesudah:   250000,
+		Petugas:        "Teller 1",
+	}
+
+	tmpl := &config.LayoutTemplate{
+		ID:         "test-100-cols",
+		Name:       "Test 100 Kolom",
+		MaxColumns: 100,
+		Columns: []config.ColumnDef{
+			{ID: "c_no", FieldKey: "no", ColStart: 0, ColWidth: 4, Align: "left"},
+			{ID: "c_tgl", FieldKey: "tanggal", ColStart: 4, ColWidth: 11, Align: "left"},
+			{ID: "c_sandi", FieldKey: "kode_transaksi", ColStart: 16, ColWidth: 6, Align: "center"},
+			{ID: "c_debet", FieldKey: "debet", ColStart: 23, ColWidth: 12, Align: "right"},
+			{ID: "c_kredit", FieldKey: "kredit", ColStart: 36, ColWidth: 12, Align: "right"},
+			{ID: "c_saldo", FieldKey: "saldo_sesudah", ColStart: 49, ColWidth: 14, Align: "right"},
+			{ID: "c_validasi", FieldKey: "petugas", ColStart: 80, ColWidth: 14, Align: "left"},
+		},
+	}
+
+	line := FormatLineWithTemplate(req, tmpl)
+
+	// Validasi harus ada di kolom 80 dan tidak nempel dengan saldo di 49..63
+	if len(line) < 88 {
+		t.Fatalf("Panjang baris hasil cetak minimal 88 karakter (Validasi di col 80+), dapat: %d |%s|", len(line), line)
+	}
+
+	// Cek bahwa di antara col 63 (akhir saldo) dan col 80 (awal validasi) adalah spasi (tidak nempel)
+	betweenSaldoAndValidasi := line[63:80]
+	for i, ch := range betweenSaldoAndValidasi {
+		if ch != ' ' {
+			t.Errorf("Karakter antara saldo dan validasi harus spasi (indeks %d: %q)", 63+i, ch)
+		}
+	}
+
+	// Cek teks validasi pada posisi 80
+	validasiText := line[80:88]
+	if validasiText != "Teller 1" {
+		t.Errorf("Kolom validasi pada posisi 80 salah: got %q, expected 'Teller 1'", validasiText)
+	}
+}
+
+func TestFormatLineWithTemplate_BankBJB_NoStickyOverlap(t *testing.T) {
+	req := &model.PrintRequest{
+		BarisKe:        14,
+		Tanggal:        "12-11-2026",
+		KodeTransaksi:  "K14",
+		JenisTransaksi: "setor",
+		Jumlah:         7000,
+		SaldoSesudah:   7000,
+		Petugas:        "adm",
+		Keterangan:     "Setoran Target Baris 14",
+	}
+
+	tmpl := &config.LayoutTemplate{
+		ID:         "tmpl-1792500970",
+		Name:       "Bank BJB",
+		MaxColumns: 100,
+		Columns: []config.ColumnDef{
+			{ID: "c_tgl", FieldKey: "tanggal", ColStart: 0, ColWidth: 12, Align: "left"},
+			{ID: "c_sandi", FieldKey: "kode_transaksi", ColStart: 13, ColWidth: 5, Align: "left"},
+			{ID: "c_debet", FieldKey: "debet", ColStart: 20, ColWidth: 15, Align: "right"},
+			{ID: "c_kredit", FieldKey: "kredit", ColStart: 40, ColWidth: 15, Align: "right"},
+			{ID: "c_saldo", FieldKey: "saldo_sesudah", ColStart: 60, ColWidth: 15, Align: "right"},
+			{ID: "c_validasi", FieldKey: "petugas", ColStart: 80, ColWidth: 15, Align: "left"},
+		},
+	}
+
+	line := FormatLineWithTemplate(req, tmpl)
+
+	// Cek panjang baris
+	if len(line) < 83 {
+		t.Fatalf("Panjang baris harus minimal 83 karakter (adm di col 80..82), got: %d |%s|", len(line), line)
+	}
+
+	// Saldo (60..75) -> "       7.000,00" -> berakhir di indeks 74
+	// Di antara indeks 75 dan 80 HARUS spasi (minimal 5 spasi pemisah)
+	betweenSaldoAndValidasi := line[75:80]
+	if betweenSaldoAndValidasi != "     " {
+		t.Errorf("Jeda antara saldo dan validasi harus 5 spasi, got: %q", betweenSaldoAndValidasi)
+	}
+
+	// Validasi pada indeks 80 harus "adm"
+	validasiText := line[80:83]
+	if validasiText != "adm" {
+		t.Errorf("Kolom validasi pada indeks 80 harus 'adm', got: %q", validasiText)
+	}
+}

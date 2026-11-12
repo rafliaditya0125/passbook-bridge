@@ -35,28 +35,28 @@ var standardBookSizes = []BookSizePreset{
 		WidthMM:     148.0,
 		HeightMM:    105.0,
 		DefaultRows: 34,
-		MaxColumns:  80,
+		MaxColumns:  100,
 	},
 	{
 		Name:        "15,0 x 10,0 cm (Bank Mini / Sekolah)",
 		WidthMM:     150.0,
 		HeightMM:    100.0,
 		DefaultRows: 30,
-		MaxColumns:  80,
+		MaxColumns:  100,
 	},
 	{
 		Name:        "16,0 x 11,0 cm (Passbook Lebar)",
 		WidthMM:     160.0,
 		HeightMM:    110.0,
 		DefaultRows: 34,
-		MaxColumns:  85,
+		MaxColumns:  105,
 	},
 	{
 		Name:        "21,0 x 14,8 cm (Buku Besar A5)",
 		WidthMM:     210.0,
 		HeightMM:    148.0,
 		DefaultRows: 40,
-		MaxColumns:  96,
+		MaxColumns:  140,
 	},
 }
 
@@ -182,6 +182,7 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 	var entryTargetRow *widget.Entry
 	var selectBookSize *widget.Select
 	var entryTotalRows *widget.Entry
+	var entryMaxCols *widget.Entry
 	var entryTopMargin *widget.Entry
 	var entryFontSize *doubleClickEntry
 	var fontBoxWidget *clickableFontBox
@@ -216,6 +217,13 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 
 		if entryTotalRows != nil {
 			entryTotalRows.SetText(fmt.Sprintf("%d", activeTmpl.GetTotalRows()))
+		}
+		if entryMaxCols != nil {
+			curCols := activeTmpl.MaxColumns
+			if curCols <= 0 {
+				curCols = 100
+			}
+			entryMaxCols.SetText(fmt.Sprintf("%d", curCols))
 		}
 		if entryTopMargin != nil {
 			entryTopMargin.SetText(fmt.Sprintf("%d", activeTmpl.TopMargin))
@@ -307,7 +315,7 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 			newTmpl := config.LayoutTemplate{
 				ID:         newID,
 				Name:       strings.TrimSpace(nameEntry.Text),
-				MaxColumns: 80,
+				MaxColumns: 100,
 				TopMargin:  0,
 				LeftMargin: 0,
 				Columns:    config.DefaultLayoutConfig().Templates[0].Columns,
@@ -336,7 +344,7 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 		curRows := activeTmpl.GetTotalRows()
 		curCols := activeTmpl.MaxColumns
 		if curCols <= 0 {
-			curCols = 80
+			curCols = 100
 		}
 
 		entryWidthCM := widget.NewEntry()
@@ -390,14 +398,19 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 					entryTotalRows.SetText(fmt.Sprintf("%d", activeTmpl.GetTotalRows()))
 					isUpdatingUI = false
 				}
+				if entryMaxCols != nil {
+					isUpdatingUI = true
+					entryMaxCols.SetText(fmt.Sprintf("%d", activeTmpl.MaxColumns))
+					isUpdatingUI = false
+				}
 
 				if canvasWidget != nil {
 					canvasWidget.Refresh()
 				}
 				_ = config.SaveLayoutConfig(state.LayoutsPath, state.Layouts)
 				state.NotifyStateChanged()
-				state.Log(fmt.Sprintf("Ukuran buku kustom diterapkan: %0.1f x %0.1f cm (%d baris)",
-					activeTmpl.PageWidthMM/10.0, activeTmpl.PageHeightMM/10.0, activeTmpl.GetTotalRows()))
+				state.Log(fmt.Sprintf("Ukuran buku kustom diterapkan: %0.1f x %0.1f cm (%d baris, %d kolom)",
+					activeTmpl.PageWidthMM/10.0, activeTmpl.PageHeightMM/10.0, activeTmpl.GetTotalRows(), activeTmpl.MaxColumns))
 			},
 			win,
 		)
@@ -432,6 +445,9 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 				if entryTotalRows != nil {
 					entryTotalRows.SetText(fmt.Sprintf("%d", activeTmpl.TotalRows))
 				}
+				if entryMaxCols != nil {
+					entryMaxCols.SetText(fmt.Sprintf("%d", activeTmpl.MaxColumns))
+				}
 				isUpdatingUI = false
 
 				if canvasWidget != nil {
@@ -461,6 +477,52 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 			state.NotifyStateChanged()
 		}
 	}
+
+	entryMaxCols = widget.NewEntry()
+	curColsInit := activeTmpl.MaxColumns
+	if curColsInit <= 0 {
+		curColsInit = 100
+	}
+	entryMaxCols.SetText(fmt.Sprintf("%d", curColsInit))
+	entryMaxCols.OnChanged = func(s string) {
+		if isUpdatingUI || activeTmpl == nil {
+			return
+		}
+		if v, err := strconv.Atoi(strings.TrimSpace(s)); err == nil && v >= 20 && v <= 200 {
+			activeTmpl.MaxColumns = v
+			if canvasWidget != nil {
+				canvasWidget.Refresh()
+			}
+			_ = config.SaveLayoutConfig(state.LayoutsPath, state.Layouts)
+			state.NotifyStateChanged()
+		}
+	}
+
+	btnColsMinus := widget.NewButton("-", func() {
+		if activeTmpl.MaxColumns > 20 {
+			activeTmpl.MaxColumns--
+			entryMaxCols.SetText(fmt.Sprintf("%d", activeTmpl.MaxColumns))
+			if canvasWidget != nil {
+				canvasWidget.Refresh()
+			}
+			_ = config.SaveLayoutConfig(state.LayoutsPath, state.Layouts)
+			state.NotifyStateChanged()
+		}
+	})
+
+	btnColsPlus := widget.NewButton("+", func() {
+		if activeTmpl.MaxColumns < 200 {
+			activeTmpl.MaxColumns++
+			entryMaxCols.SetText(fmt.Sprintf("%d", activeTmpl.MaxColumns))
+			if canvasWidget != nil {
+				canvasWidget.Refresh()
+			}
+			_ = config.SaveLayoutConfig(state.LayoutsPath, state.Layouts)
+			state.NotifyStateChanged()
+		}
+	})
+
+	rowMaxCols := container.NewBorder(nil, nil, nil, container.NewHBox(btnColsMinus, btnColsPlus), entryMaxCols)
 
 	entrySpasiSetelah := widget.NewEntry()
 	entrySpasiSetelah.SetText("0")
@@ -777,6 +839,7 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 	printSettingsForm := widget.NewForm(
 		widget.NewFormItem("Template Buku", templateRow),
 		widget.NewFormItem("Ukuran Buku (P x L)", selectBookSize),
+		widget.NewFormItem("Maksimal Kolom", rowMaxCols),
 		widget.NewFormItem("Jumlah Baris", entryTotalRows),
 		widget.NewFormItem("Target Baris Awal Cetak", rowTargetRow),
 		widget.NewFormItem("Margin Atas", rowTopMargin),
@@ -841,10 +904,14 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 				}
 				col.FieldKey = keySelect.Selected
 				col.Align = alignSelect.Selected
-				if p, err := strconv.Atoi(strings.TrimSpace(posEntry.Text)); err == nil && p >= 0 && p <= 80 {
+				maxLimit := 100
+				if activeTmpl != nil && activeTmpl.MaxColumns > 0 {
+					maxLimit = activeTmpl.MaxColumns
+				}
+				if p, err := strconv.Atoi(strings.TrimSpace(posEntry.Text)); err == nil && p >= 0 && p <= maxLimit {
 					col.ColStart = p
 				}
-				if w, err := strconv.Atoi(strings.TrimSpace(widthEntry.Text)); err == nil && w >= 2 && w <= 80 {
+				if w, err := strconv.Atoi(strings.TrimSpace(widthEntry.Text)); err == nil && w >= 2 && w <= maxLimit {
 					col.ColWidth = w
 				}
 				if canvasWidget != nil {
@@ -888,7 +955,11 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 				if isUpdatingUI || colIdx >= len(activeTmpl.Columns) {
 					return
 				}
-				if v, err := strconv.Atoi(strings.TrimSpace(val)); err == nil && v >= 0 && v <= 80 {
+				maxLimit := 100
+				if activeTmpl != nil && activeTmpl.MaxColumns > 0 {
+					maxLimit = activeTmpl.MaxColumns
+				}
+				if v, err := strconv.Atoi(strings.TrimSpace(val)); err == nil && v >= 0 && v <= maxLimit {
 					activeTmpl.Columns[colIdx].ColStart = v
 					if canvasWidget != nil {
 						canvasWidget.Refresh()
@@ -903,12 +974,13 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 				if isUpdatingUI || colIdx >= len(activeTmpl.Columns) {
 					return
 				}
-				if v, err := strconv.Atoi(strings.TrimSpace(val)); err == nil && v >= 2 && v <= 80 {
+				maxLimit := 100
+				if activeTmpl != nil && activeTmpl.MaxColumns > 0 {
+					maxLimit = activeTmpl.MaxColumns
+				}
+				if v, err := strconv.Atoi(strings.TrimSpace(val)); err == nil && v >= 2 && v <= maxLimit {
 					activeTmpl.Columns[colIdx].ColWidth = v
 					if canvasWidget != nil {
-						if canvasWidget.IsStickyMode() {
-							MakeColumnsSticky(activeTmpl)
-						}
 						canvasWidget.Refresh()
 					}
 				}
@@ -927,7 +999,11 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 			})
 
 			btnPosPlus := widget.NewButton("+", func() {
-				if colIdx < len(activeTmpl.Columns) && activeTmpl.Columns[colIdx].ColStart < 80 {
+				maxLimit := 100
+				if activeTmpl != nil && activeTmpl.MaxColumns > 0 {
+					maxLimit = activeTmpl.MaxColumns
+				}
+				if colIdx < len(activeTmpl.Columns) && activeTmpl.Columns[colIdx].ColStart < maxLimit {
 					activeTmpl.Columns[colIdx].ColStart++
 					posEntry.SetText(fmt.Sprintf("%d", activeTmpl.Columns[colIdx].ColStart))
 					if canvasWidget != nil {
@@ -941,9 +1017,6 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 					activeTmpl.Columns[colIdx].ColWidth--
 					widthEntry.SetText(fmt.Sprintf("%d", activeTmpl.Columns[colIdx].ColWidth))
 					if canvasWidget != nil {
-						if canvasWidget.IsStickyMode() {
-							MakeColumnsSticky(activeTmpl)
-						}
 						canvasWidget.Refresh()
 					}
 					updateColumnInputs()
@@ -951,13 +1024,14 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 			})
 
 			btnWidthPlus := widget.NewButton("+", func() {
-				if colIdx < len(activeTmpl.Columns) && activeTmpl.Columns[colIdx].ColWidth < 80 {
+				maxLimit := 100
+				if activeTmpl != nil && activeTmpl.MaxColumns > 0 {
+					maxLimit = activeTmpl.MaxColumns
+				}
+				if colIdx < len(activeTmpl.Columns) && activeTmpl.Columns[colIdx].ColWidth < maxLimit {
 					activeTmpl.Columns[colIdx].ColWidth++
 					widthEntry.SetText(fmt.Sprintf("%d", activeTmpl.Columns[colIdx].ColWidth))
 					if canvasWidget != nil {
-						if canvasWidget.IsStickyMode() {
-							MakeColumnsSticky(activeTmpl)
-						}
 						canvasWidget.Refresh()
 					}
 					updateColumnInputs()
@@ -1031,13 +1105,20 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 		if activeTmpl == nil {
 			return
 		}
+		maxLimit := 100
+		if activeTmpl.MaxColumns > 0 {
+			maxLimit = activeTmpl.MaxColumns
+		}
 		lastEnd := 0
 		if len(activeTmpl.Columns) > 0 {
 			last := activeTmpl.Columns[len(activeTmpl.Columns)-1]
 			lastEnd = last.ColStart + last.ColWidth
 		}
-		if lastEnd > 72 {
-			lastEnd = 65
+		if lastEnd > maxLimit-10 {
+			lastEnd = maxLimit - 15
+			if lastEnd < 0 {
+				lastEnd = 0
+			}
 		}
 
 		newCol := config.ColumnDef{
