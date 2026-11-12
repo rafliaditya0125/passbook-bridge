@@ -195,7 +195,7 @@ func NewPassbookCanvasWidget(tmpl *config.LayoutTemplate, onSelected func(int), 
 		scale:          1.0,
 		selectedColIdx: 0,
 		targetRow:      14, // Default baris ke-14 sesuai standar simulasi
-		stickyMode:     true,
+		stickyMode:     false,
 		hoverBorderIdx: -1,
 		hoverHeaderIdx: -1,
 		hoverRowIdx:    -1,
@@ -258,12 +258,16 @@ func (w *PassbookCanvasWidget) AdjustSelectedWidth(delta int) {
 	if w.tmpl == nil || w.selectedColIdx < 0 || w.selectedColIdx >= len(w.tmpl.Columns) {
 		return
 	}
+	maxLimit := 100
+	if w.tmpl.MaxColumns > 0 {
+		maxLimit = w.tmpl.MaxColumns
+	}
 	col := &w.tmpl.Columns[w.selectedColIdx]
 	newW := col.ColWidth + delta
 	if newW < 2 {
 		newW = 2
-	} else if newW > 80 {
-		newW = 80
+	} else if newW > maxLimit {
+		newW = maxLimit
 	}
 	col.ColWidth = newW
 	if w.stickyMode {
@@ -279,12 +283,16 @@ func (w *PassbookCanvasWidget) AdjustSelectedStart(delta int) {
 	if w.tmpl == nil || w.selectedColIdx < 0 || w.selectedColIdx >= len(w.tmpl.Columns) {
 		return
 	}
+	maxLimit := 100
+	if w.tmpl.MaxColumns > 0 {
+		maxLimit = w.tmpl.MaxColumns
+	}
 	col := &w.tmpl.Columns[w.selectedColIdx]
 	newS := col.ColStart + delta
 	if newS < 0 {
 		newS = 0
-	} else if newS > 80 {
-		newS = 80
+	} else if newS > maxLimit {
+		newS = maxLimit
 	}
 	col.ColStart = newS
 	w.Refresh()
@@ -396,8 +404,10 @@ func (w *PassbookCanvasWidget) getGeometry() (paperX, paperY, paperW, paperH, pr
 	printX = paperX + 16*s + rowHdrW
 	printW = paperW - 32*s - rowHdrW // printable width
 
-	maxCols := 80
-	if w.tmpl != nil && w.tmpl.FontPitchCPI > 0 {
+	maxCols := 100
+	if w.tmpl != nil && w.tmpl.MaxColumns > 0 {
+		maxCols = w.tmpl.MaxColumns
+	} else if w.tmpl != nil && w.tmpl.FontPitchCPI > 0 {
 		switch w.tmpl.FontPitchCPI {
 		case 10:
 			maxCols = 58 // 10 CPI Pica (Font Lebar)
@@ -406,12 +416,10 @@ func (w *PassbookCanvasWidget) getGeometry() (paperX, paperY, paperW, paperH, pr
 		case 15:
 			maxCols = 85 // 15 CPI (Font Rapat)
 		case 17:
-			maxCols = 96 // 17 CPI Condensed (Standar Blangko Buku Tabungan)
+			maxCols = 100 // 17 CPI Condensed (Standar Blangko Buku Tabungan)
 		default:
-			maxCols = 80
+			maxCols = 100
 		}
-	} else if w.tmpl != nil && w.tmpl.MaxColumns > 0 {
-		maxCols = w.tmpl.MaxColumns
 	}
 	charW = printW / float32(maxCols)
 
@@ -776,9 +784,13 @@ func (w *PassbookCanvasWidget) Dragged(e *fyne.DragEvent) {
 			if newStart < 0 {
 				newStart = 0
 			}
-			maxStart := w.tmpl.MaxColumns - w.tmpl.Columns[curIdx].ColWidth
+			maxColsLimit := 100
+			if w.tmpl.MaxColumns > 0 {
+				maxColsLimit = w.tmpl.MaxColumns
+			}
+			maxStart := maxColsLimit - w.tmpl.Columns[curIdx].ColWidth
 			if maxStart < 0 {
-				maxStart = 78
+				maxStart = 0
 			}
 			if newStart > maxStart {
 				newStart = maxStart
