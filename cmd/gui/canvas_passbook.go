@@ -393,23 +393,33 @@ func (w *PassbookCanvasWidget) getGeometry() (paperX, paperY, paperW, paperH, pr
 	maxCols := 100
 	if w.tmpl != nil && w.tmpl.MaxColumns > 0 {
 		maxCols = w.tmpl.MaxColumns
-	} else if w.tmpl != nil && w.tmpl.FontPitchCPI > 0 {
-		switch w.tmpl.FontPitchCPI {
-		case 10:
-			maxCols = 58 // 10 CPI Pica (Font Lebar)
-		case 12:
-			maxCols = 70 // 12 CPI Elite (Font Standar)
-		case 15:
-			maxCols = 85 // 15 CPI (Font Rapat)
-		case 17:
-			maxCols = 100 // 17 CPI Condensed (Standar Blangko Buku Tabungan)
-		default:
-			maxCols = 100
-		}
+	}
+
+	cpi := 17
+	if w.tmpl != nil && w.tmpl.GetFontPitchCPI() > 0 {
+		cpi = w.tmpl.GetFontPitchCPI()
+	}
+
+	// Hitung lebar 1 karakter (charW) sesuai pitch CPI printer dot-matrix
+	// Rasio fisik: 1 inci = 25.4 mm.
+	// Pada 17.14 CPI condensed standar buku tabungan, baseCharW = 7.2
+	// Pada CPI lebih rendah (karakter lebih lebar/renggang), charW membesar secara proporsional.
+	var baseCharW float32
+	switch cpi {
+	case 10:
+		baseCharW = 12.3 // 10 CPI Pica (Karakter Lebar)
+	case 12:
+		baseCharW = 10.3 // 12 CPI Elite (Karakter Sedang)
+	case 15:
+		baseCharW = 8.2  // 15 CPI (Karakter Rapat)
+	case 20:
+		baseCharW = 6.1  // 20 CPI (Karakter Sangat Rapat)
+	default:
+		baseCharW = 7.2  // 17 CPI (Condensed Standar Buku Tabungan)
 	}
 
 	rowHdrW := 28 * s
-	charW = 7.2 * s
+	charW = baseCharW * s
 	printW = float32(maxCols) * charW
 	paperW = printW + 32*s + rowHdrW
 	printX = paperX + 16*s + rowHdrW
@@ -1144,7 +1154,21 @@ func (r *passbookCanvasRenderer) rebuildObjects() {
 				cellText.TextStyle = getSafeTextStyle(isMono, isBold, isItalic)
 
 				cellFontSize := float32(tmpl.GetFontSize())
-				cellText.TextSize = scaleFont(cellFontSize, s)
+				cpiVal := tmpl.GetFontPitchCPI()
+				cpiMultiplier := float32(1.0)
+				switch cpiVal {
+				case 10:
+					cpiMultiplier = 1.25
+				case 12:
+					cpiMultiplier = 1.12
+				case 15:
+					cpiMultiplier = 1.04
+				case 20:
+					cpiMultiplier = 0.90
+				default:
+					cpiMultiplier = 1.00
+				}
+				cellText.TextSize = scaleFont(cellFontSize*cpiMultiplier, s)
 
 				textW := float32(len([]rune(valStr))) * charW
 				var textX float32

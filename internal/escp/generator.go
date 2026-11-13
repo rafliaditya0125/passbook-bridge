@@ -35,13 +35,20 @@ func GeneratePrintCommand(req *model.PrintRequest, opts GeneratorOptions) []byte
 		pitch := opts.Template.GetFontPitchCPI()
 		switch pitch {
 		case 10:
-			buf.Write([]byte{0x1B, 0x50}) // ESC P (10 CPI Pica - Lebar)
+			// 10 CPI Pica: Matikan condensed (DC2 / 0x12) + ESC P (0x1B 0x50)
+			buf.Write([]byte{0x12, 0x1B, 0x50})
 		case 12:
-			buf.Write([]byte{0x1B, 0x4D}) // ESC M (12 CPI Elite - Sedang)
+			// 12 CPI Elite: Matikan condensed (DC2 / 0x12) + ESC M (0x1B 0x4D)
+			buf.Write([]byte{0x12, 0x1B, 0x4D})
 		case 15:
-			buf.Write([]byte{0x1B, 0x67}) // ESC g (15 CPI - Rapat)
+			// 15 CPI: Matikan condensed (DC2 / 0x12) + ESC g (0x1B 0x67)
+			buf.Write([]byte{0x12, 0x1B, 0x67})
+		case 20:
+			// 20 CPI: ESC M (12 CPI) + SI (0x0F Condensed ON)
+			buf.Write([]byte{0x1B, 0x4D, 0x0F})
 		default:
-			buf.Write(CmdCondensedOn) // SI (Condensed ~17 CPI standar buku tabungan)
+			// 17 CPI (Standar Condensed Buku Tabungan): ESC P (10 CPI) + SI (0x0F Condensed ON)
+			buf.Write([]byte{0x1B, 0x50, 0x0F})
 		}
 
 		// Typeface ESC/P: 0=Roman, 1=Sans-serif, 2=Courier

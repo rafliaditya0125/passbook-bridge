@@ -326,3 +326,33 @@ func TestPassbookCanvasWidget_TopMargin(t *testing.T) {
 		t.Errorf("Shift Y untuk TopMargin 3 salah: got diff=%f, expected=%f", actualDiff, expectedDiff)
 	}
 }
+
+func TestPassbookCanvasWidget_FontPitchCPI(t *testing.T) {
+	_ = test.NewApp()
+
+	tmpl := &config.LayoutTemplate{
+		ID:           "test_cpi",
+		Name:         "Test CPI",
+		MaxColumns:   80,
+		FontPitchCPI: 17,
+	}
+
+	w := NewPassbookCanvasWidget(tmpl, nil, nil)
+	_, _, _, _, _, _, charW17, _ := w.getGeometry()
+
+	if charW17 != 7.2 {
+		t.Errorf("Expected charW 7.2 pada 17 CPI, got %f", charW17)
+	}
+
+	tmpl.FontPitchCPI = 10
+	w.SetTemplate(tmpl)
+	_, _, _, _, _, _, charW10, _ := w.getGeometry()
+
+	if charW10 != 12.3 {
+		t.Errorf("Expected charW 12.3 pada 10 CPI, got %f", charW10)
+	}
+
+	if charW10 <= charW17 {
+		t.Errorf("charW pada 10 CPI harus lebih lebar dari 17 CPI: charW10=%f, charW17=%f", charW10, charW17)
+	}
+}

@@ -12,7 +12,7 @@
       "font_size": 10,
       "font_family": "FreeSerif",
       "font_style": "Bold",
-      "font_pitch_cpi": 15,
+      "font_pitch_cpi": 10,
       "columns": [
         {
           "id": "col_no",
@@ -67,7 +67,7 @@
           "field_key": "petugas",
           "display_name": "Validasi",
           "col_start": 68,
-          "col_width": 14,
+          "col_width": 15,
           "align": "left"
         }
       ]
