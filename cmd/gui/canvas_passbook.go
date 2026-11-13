@@ -427,7 +427,7 @@ func (w *PassbookCanvasWidget) getGeometry() (paperX, paperY, paperW, paperH, pr
 	if w.tmpl != nil && w.tmpl.TopMargin > 0 {
 		topM = w.tmpl.TopMargin
 	}
-	originY = paperY + (44+float32(topM)*2.5)*s
+	originY = paperY + 44*s + float32(topM)*22*s
 	return
 }
 

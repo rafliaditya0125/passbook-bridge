@@ -243,6 +243,8 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 		if updateColumnInputs != nil {
 			updateColumnInputs()
 		}
+		_ = config.SaveLayoutConfig(state.LayoutsPath, state.Layouts)
+		state.NotifyStateChanged()
 	})
 
 	canvasWidget.OnTargetRowChanged = func(row int) {
@@ -538,6 +540,8 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 			if canvasWidget != nil {
 				canvasWidget.Refresh()
 			}
+			_ = config.SaveLayoutConfig(state.LayoutsPath, state.Layouts)
+			state.NotifyStateChanged()
 		}
 	}
 
@@ -548,6 +552,8 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 			if canvasWidget != nil {
 				canvasWidget.Refresh()
 			}
+			_ = config.SaveLayoutConfig(state.LayoutsPath, state.Layouts)
+			state.NotifyStateChanged()
 		}
 	})
 
@@ -558,6 +564,8 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 			if canvasWidget != nil {
 				canvasWidget.Refresh()
 			}
+			_ = config.SaveLayoutConfig(state.LayoutsPath, state.Layouts)
+			state.NotifyStateChanged()
 		}
 	})
 

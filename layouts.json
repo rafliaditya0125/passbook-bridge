@@ -1,5 +1,5 @@
 {
-  "active_template": "bca-tahapan",
+  "active_template": "tmpl-1792500970",
   "templates": [
     {
       "id": "tabungan-standar-34",
@@ -375,6 +375,7 @@
     {
       "id": "tmpl-1792500970",
       "name": "Bank BJB",
+      "top_margin": 3,
       "max_columns": 100,
       "total_rows": 34,
       "page_width_mm": 148,

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"testing"
 
 	"fyne.io/fyne/v2"
@@ -299,5 +300,32 @@ func TestPassbookCanvasWidget_FontAndDoubleClick(t *testing.T) {
 	}
 	if isMonospaceFont("Tahoma") {
 		t.Errorf("Expected Tahoma to be proportional")
+	}
+}
+
+func TestPassbookCanvasWidget_TopMargin(t *testing.T) {
+	_ = test.NewApp()
+
+	tmpl := &config.LayoutTemplate{
+		ID:         "test_tm",
+		Name:       "Test TM",
+		MaxColumns: 80,
+		TopMargin:  0,
+		Columns: []config.ColumnDef{
+			{ID: "c1", DisplayName: "No", ColStart: 0, ColWidth: 4},
+		},
+	}
+
+	w := NewPassbookCanvasWidget(tmpl, nil, nil)
+	_, _, _, _, _, _, _, originY0 := w.getGeometry()
+
+	tmpl.TopMargin = 3
+	w.SetTemplate(tmpl)
+	_, _, _, _, _, _, _, originY3 := w.getGeometry()
+
+	expectedDiff := float32(3) * 22 * w.GetScale()
+	actualDiff := originY3 - originY0
+	if math.Abs(float64(actualDiff-expectedDiff)) > 0.01 {
+		t.Errorf("Shift Y untuk TopMargin 3 salah: got diff=%f, expected=%f", actualDiff, expectedDiff)
 	}
 }
