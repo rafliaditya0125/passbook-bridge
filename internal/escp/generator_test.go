@@ -212,6 +212,35 @@ func TestGeneratePrintCommand_FontOptions(t *testing.T) {
 	}
 }
 
+func TestGeneratePrintCommand_AllCPIModes(t *testing.T) {
+	req := &model.PrintRequest{
+		BarisKe: 1,
+		Tanggal: "2026-11-13",
+	}
+
+	tests := []struct {
+		cpi         int
+		expectedCmd []byte
+	}{
+		{10, []byte{0x12, 0x1B, 0x50}},       // DC2 (Cancel condensed) + ESC P (10 CPI)
+		{12, []byte{0x12, 0x1B, 0x4D}},       // DC2 (Cancel condensed) + ESC M (12 CPI)
+		{15, []byte{0x12, 0x1B, 0x67}},       // DC2 (Cancel condensed) + ESC g (15 CPI)
+		{17, []byte{0x1B, 0x50, 0x0F}},       // ESC P + SI (Condensed ON = 17.14 CPI)
+		{20, []byte{0x1B, 0x4D, 0x0F}},       // ESC M + SI (Condensed ON = 20 CPI)
+	}
+
+	for _, tt := range tests {
+		tmpl := &config.LayoutTemplate{
+			ID:           "test_cpi",
+			FontPitchCPI: tt.cpi,
+		}
+		raw := GeneratePrintCommand(req, GeneratorOptions{Template: tmpl})
+		if !bytes.Contains(raw, tt.expectedCmd) {
+			t.Errorf("CPI %d: expected command bytes %v, not found in raw %v", tt.cpi, tt.expectedCmd, raw[:10])
+		}
+	}
+}
+
 func TestFormatLineWithTemplate_Max100ColumnsAndValidasiAt80(t *testing.T) {
 	req := &model.PrintRequest{
 		BarisKe:        5,

@@ -122,11 +122,13 @@ type PrintRequest struct {
 	Petugas        string     `json:"petugas"`
 	BarisKe        FlexInt    `json:"baris_ke,omitempty"` // Alias: baris_ke
 	Baris          FlexInt    `json:"baris,omitempty"`    // Alias: baris
+	No             FlexInt    `json:"no,omitempty"`       // Alias: no
+	Nomor          FlexInt    `json:"nomor,omitempty"`    // Alias: nomor
 	Line           FlexInt    `json:"line,omitempty"`     // Alias: line
 	Row            FlexInt    `json:"row,omitempty"`      // Alias: row
 }
 
-// GetBaris mengembalikan nomor baris target cetak dari alias baris_ke, baris, line, atau row (default 1).
+// GetBaris mengembalikan nomor baris target cetak dari alias baris_ke, baris, no, nomor, line, atau row (default 1).
 func (r *PrintRequest) GetBaris() int {
 	if r == nil {
 		return 1
@@ -136,6 +138,12 @@ func (r *PrintRequest) GetBaris() int {
 	}
 	if r.Baris > 0 {
 		return int(r.Baris)
+	}
+	if r.No > 0 {
+		return int(r.No)
+	}
+	if r.Nomor > 0 {
+		return int(r.Nomor)
 	}
 	if r.Line > 0 {
 		return int(r.Line)
@@ -151,6 +159,8 @@ func (r *PrintRequest) SetBaris(b int) {
 	if r != nil {
 		r.BarisKe = FlexInt(b)
 		r.Baris = FlexInt(b)
+		r.No = FlexInt(b)
+		r.Nomor = FlexInt(b)
 		r.Line = FlexInt(b)
 		r.Row = FlexInt(b)
 	}

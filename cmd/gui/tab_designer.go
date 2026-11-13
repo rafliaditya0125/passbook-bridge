@@ -452,32 +452,51 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 			return
 		}
 
-		fontFamilies := []string{
-			"Arial Narrow",
-			"Courier New",
-			"Consolas",
-			"Lucida Console",
-			"Tahoma",
-			"Segoe UI",
-			"Times New Roman",
-			"ESC/P Draft",
-		}
+		fontFamilies := GetSystemFontFamilies()
 
 		cleanFamilyName := func(val string) string {
+			val = strings.TrimSpace(val)
 			for _, f := range fontFamilies {
-				if strings.EqualFold(strings.TrimSpace(val), f) || strings.Contains(strings.ToLower(val), strings.ToLower(f)) {
+				if strings.EqualFold(val, f) {
 					return f
 				}
 			}
-			return strings.TrimSpace(val)
+			return val
+		}
+
+		curFam := cleanFamilyName(activeTmpl.GetFontFamily())
+		if curFam == "" && len(fontFamilies) > 0 {
+			curFam = fontFamilies[0]
 		}
 
 		selectFamily := widget.NewSelect(fontFamilies, nil)
-		curFam := cleanFamilyName(activeTmpl.GetFontFamily())
 		selectFamily.SetSelected(curFam)
-		if selectFamily.Selected == "" {
-			selectFamily.SetSelected("Arial Narrow")
+
+		entrySearchFont := widget.NewEntry()
+		entrySearchFont.SetPlaceHolder("Ketik untuk memfilter font...")
+		entrySearchFont.OnChanged = func(q string) {
+			q = strings.ToLower(strings.TrimSpace(q))
+			if q == "" {
+				selectFamily.Options = fontFamilies
+			} else {
+				var matches []string
+				for _, f := range fontFamilies {
+					if strings.Contains(strings.ToLower(f), q) {
+						matches = append(matches, f)
+					}
+				}
+				if len(matches) == 0 {
+					matches = []string{curFam}
+				}
+				selectFamily.Options = matches
+			}
+			selectFamily.Refresh()
 		}
+
+		searchAndSelectFamily := container.NewVBox(
+			entrySearchFont,
+			selectFamily,
+		)
 
 		fontSizes := []string{"8", "9", "10", "11", "12", "14", "16", "18", "20"}
 		selectSize := widget.NewSelect(fontSizes, nil)
@@ -497,6 +516,7 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 			"15 CPI (Rapat)",
 			"12 CPI (Elite - Sedang)",
 			"10 CPI (Pica - Lebar)",
+			"20 CPI (Sangat Rapat)",
 		}
 		selectPitch := widget.NewSelect(fontPitches, nil)
 		switch activeTmpl.GetFontPitchCPI() {
@@ -506,6 +526,8 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 			selectPitch.SetSelected("12 CPI (Elite - Sedang)")
 		case 15:
 			selectPitch.SetSelected("15 CPI (Rapat)")
+		case 20:
+			selectPitch.SetSelected("20 CPI (Sangat Rapat)")
 		default:
 			selectPitch.SetSelected("17 CPI (Condensed - Standar Buku Tabungan)")
 		}
@@ -523,17 +545,43 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 			isItalic := strings.Contains(st, "italic")
 
 			previewText.TextStyle = getSafeTextStyle(isMono, isBold, isItalic)
-			if s, err := strconv.Atoi(selectSize.Selected); err == nil && s >= 6 {
-				previewText.TextSize = float32(s) + 3.0 // skala agar jelas di dialog
+
+			var cpiVal int
+			var pitchDesc string
+			switch {
+			case strings.HasPrefix(selectPitch.Selected, "10"):
+				cpiVal = 10
+				pitchDesc = "10 CPI (Pica - Lebar)"
+			case strings.HasPrefix(selectPitch.Selected, "12"):
+				cpiVal = 12
+				pitchDesc = "12 CPI (Elite - Sedang)"
+			case strings.HasPrefix(selectPitch.Selected, "15"):
+				cpiVal = 15
+				pitchDesc = "15 CPI (Rapat)"
+			case strings.HasPrefix(selectPitch.Selected, "20"):
+				cpiVal = 20
+				pitchDesc = "20 CPI (Sangat Rapat)"
+			default:
+				cpiVal = 17
+				pitchDesc = "17 CPI (Condensed - Standar)"
 			}
+
+			previewBaseSize := float32(10.0)
+			if s, err := strconv.Atoi(selectSize.Selected); err == nil && s >= 6 {
+				previewBaseSize = float32(s)
+			}
+
+			// Skala teks pratinjau sesuai CPI (10 CPI lebih lebar/besar, 17-20 CPI lebih ramping)
+			cpiScale := float32(17.14) / float32(cpiVal)
+			previewText.TextSize = (previewBaseSize + 2.0) * (0.65 + 0.35*cpiScale)
 			previewText.Refresh()
 
 			famType := "Sans-Serif Proporsional"
 			if isMono {
 				famType = "Fixed-Width Monospace"
 			}
-			lblPreviewInfo.Text = fmt.Sprintf("Karakteristik: %s  •  Gaya: %s  •  Ukuran: %s pt",
-				famType, selectStyle.Selected, selectSize.Selected)
+			lblPreviewInfo.Text = fmt.Sprintf("Karakteristik: %s  •  Gaya: %s  •  Ukuran: %s pt  •  Pitch: %s",
+				famType, selectStyle.Selected, selectSize.Selected, pitchDesc)
 			lblPreviewInfo.Refresh()
 		}
 
@@ -550,14 +598,14 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 		previewCard := widget.NewCard("Pratinjau Font", "", previewBox)
 
 		form := widget.NewForm(
-			widget.NewFormItem("Jenis Font (Font Family)", selectFamily),
+			widget.NewFormItem("Jenis Font (Sistem)", searchAndSelectFamily),
 			widget.NewFormItem("Ukuran Font (pt)", selectSize),
 			widget.NewFormItem("Gaya Huruf (Style)", selectStyle),
 			widget.NewFormItem("Pitch Dot-Matrix (CPI)", selectPitch),
 		)
 
 		d := showCustomConfirm(
-			"Pilih Font Buku Tabungan",
+			"Pilih Font Buku Tabungan (Font Sistem)",
 			"Terapkan", "Batal",
 			container.NewVBox(
 				form,
@@ -581,6 +629,8 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 					activeTmpl.FontPitchCPI = 12
 				case strings.HasPrefix(selectPitch.Selected, "15"):
 					activeTmpl.FontPitchCPI = 15
+				case strings.HasPrefix(selectPitch.Selected, "20"):
+					activeTmpl.FontPitchCPI = 20
 				default:
 					activeTmpl.FontPitchCPI = 17
 				}
