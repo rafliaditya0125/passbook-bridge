@@ -306,3 +306,80 @@ func TestFormatLineWithTemplate_BankBJB_NoStickyOverlap(t *testing.T) {
 		t.Errorf("Kolom validasi pada indeks 80 harus 'adm', got: %q", validasiText)
 	}
 }
+
+func TestGeneratePrintCommand_TopMargin_Row1AndSubsequent(t *testing.T) {
+	tmpl := &config.LayoutTemplate{
+		ID:         "test_top_margin",
+		Name:       "Test Top Margin",
+		TopMargin:  3,
+		MaxColumns: 80,
+		Columns: []config.ColumnDef{
+			{ID: "c1", FieldKey: "keterangan", ColStart: 0, ColWidth: 20},
+		},
+	}
+
+	tests := []struct {
+		name               string
+		topMargin          int
+		baris              int
+		expectedLineOffset int
+	}{
+		{
+			name:               "TopMargin 3, Baris 1 (geser baris pertama)",
+			topMargin:          3,
+			baris:              1,
+			expectedLineOffset: 3, // 3 + (1-1) = 3
+		},
+		{
+			name:               "TopMargin 3, Baris 2 (geser baris kedua)",
+			topMargin:          3,
+			baris:              2,
+			expectedLineOffset: 4, // 3 + (2-1) = 4
+		},
+		{
+			name:               "TopMargin 3, Baris 14 (geser baris ke-14)",
+			topMargin:          3,
+			baris:              14,
+			expectedLineOffset: 16, // 3 + (14-1) = 16
+		},
+		{
+			name:               "TopMargin 0, Baris 1 (tanpa margin, baris 1)",
+			topMargin:          0,
+			baris:              1,
+			expectedLineOffset: 0, // 0 + 0 = 0
+		},
+		{
+			name:               "TopMargin 0, Baris 5 (tanpa margin, baris 5)",
+			topMargin:          0,
+			baris:              5,
+			expectedLineOffset: 4, // 0 + (5-1) = 4
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			currentTmpl := *tmpl
+			currentTmpl.TopMargin = tt.topMargin
+
+			req := &model.PrintRequest{
+				BarisKe:    model.FlexInt(tt.baris),
+				Keterangan: "TEST_LINE_OFFSET",
+			}
+
+			raw := GeneratePrintCommand(req, GeneratorOptions{
+				Template: &currentTmpl,
+			})
+
+			targetText := "TEST_LINE_OFFSET"
+			idx := bytes.Index(raw, []byte(targetText))
+			if idx == -1 {
+				t.Fatalf("Target text %q tidak ditemukan dalam raw output", targetText)
+			}
+
+			crlfBeforeLine := bytes.Count(raw[:idx], []byte{0x0D, 0x0A})
+			if crlfBeforeLine != tt.expectedLineOffset {
+				t.Errorf("CRLF sebelum teks = %d, expected %d", crlfBeforeLine, tt.expectedLineOffset)
+			}
+		})
+	}
+}

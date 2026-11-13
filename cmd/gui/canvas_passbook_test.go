@@ -1,6 +1,7 @@
 package main
 
 import (
+	"math"
 	"testing"
 
 	"fyne.io/fyne/v2"
@@ -211,12 +212,10 @@ func TestPassbookCanvasWidget_BookSizeAndDimensions(t *testing.T) {
 	_ = test.NewApp()
 
 	tmpl := &config.LayoutTemplate{
-		ID:           "test_size",
-		Name:         "Test Size",
-		MaxColumns:   80,
-		TotalRows:    34,
-		PageWidthMM:  148.0,
-		PageHeightMM: 105.0,
+		ID:         "test_size",
+		Name:       "Test Size",
+		MaxColumns: 80,
+		TotalRows:  30,
 		Columns: []config.ColumnDef{
 			{ID: "c1", DisplayName: "No", ColStart: 0, ColWidth: 4},
 		},
@@ -225,19 +224,18 @@ func TestPassbookCanvasWidget_BookSizeAndDimensions(t *testing.T) {
 	w := NewPassbookCanvasWidget(tmpl, nil, nil)
 	_, _, paperW1, paperH1, _, _, _, _ := w.getGeometry()
 
-	// Sekarang ubah ke preset yang lebih besar (Buku Besar A5: 210 x 148 mm)
-	tmpl.PageWidthMM = 210.0
-	tmpl.PageHeightMM = 148.0
-	tmpl.TotalRows = 40
+	// Sekarang ubah ke dimensi lebih besar (120 kolom, 34 baris)
+	tmpl.MaxColumns = 120
+	tmpl.TotalRows = 34
 	w.SetTemplate(tmpl)
 
 	_, _, paperW2, paperH2, _, _, _, _ := w.getGeometry()
 
 	if paperW2 <= paperW1 {
-		t.Errorf("Ukuran kertas tidak bertambah: paperW1=%f, paperW2=%f", paperW1, paperW2)
+		t.Errorf("Lebar kertas tidak bertambah saat MaxColumns bertambah: paperW1=%f, paperW2=%f", paperW1, paperW2)
 	}
 	if paperH2 <= paperH1 {
-		t.Errorf("Tinggi kertas tidak bertambah: paperH1=%f, paperH2=%f", paperH1, paperH2)
+		t.Errorf("Tinggi kertas tidak bertambah saat TotalRows bertambah: paperH1=%f, paperH2=%f", paperH1, paperH2)
 	}
 	if w.GetDisplayRows() != 34 { // capped at 34 display rows
 		t.Errorf("Expected display rows 34, got %d", w.GetDisplayRows())
@@ -299,5 +297,32 @@ func TestPassbookCanvasWidget_FontAndDoubleClick(t *testing.T) {
 	}
 	if isMonospaceFont("Tahoma") {
 		t.Errorf("Expected Tahoma to be proportional")
+	}
+}
+
+func TestPassbookCanvasWidget_TopMargin(t *testing.T) {
+	_ = test.NewApp()
+
+	tmpl := &config.LayoutTemplate{
+		ID:         "test_tm",
+		Name:       "Test TM",
+		MaxColumns: 80,
+		TopMargin:  0,
+		Columns: []config.ColumnDef{
+			{ID: "c1", DisplayName: "No", ColStart: 0, ColWidth: 4},
+		},
+	}
+
+	w := NewPassbookCanvasWidget(tmpl, nil, nil)
+	_, _, _, _, _, _, _, originY0 := w.getGeometry()
+
+	tmpl.TopMargin = 3
+	w.SetTemplate(tmpl)
+	_, _, _, _, _, _, _, originY3 := w.getGeometry()
+
+	expectedDiff := float32(3) * 22 * w.GetScale()
+	actualDiff := originY3 - originY0
+	if math.Abs(float64(actualDiff-expectedDiff)) > 0.01 {
+		t.Errorf("Shift Y untuk TopMargin 3 salah: got diff=%f, expected=%f", actualDiff, expectedDiff)
 	}
 }
