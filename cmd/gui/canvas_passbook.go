@@ -390,20 +390,6 @@ func (w *PassbookCanvasWidget) getGeometry() (paperX, paperY, paperW, paperH, pr
 	paperX = 14 + w.panX
 	paperY = 12 + w.panY
 
-	widthMM, heightMM := float64(148.0), float64(105.0)
-	if w.tmpl != nil {
-		widthMM, heightMM = w.tmpl.GetPageDimensions()
-	}
-
-	// 1 mm fisik dikonversikan ke pixel pada canvas (~4.865 px/mm sehingga 148 mm menghasilkan ~720 px pada scale 1.0)
-	const pxPerMM = float32(4.865)
-	paperW = float32(widthMM) * pxPerMM * s
-	paperH = float32(heightMM) * pxPerMM * s
-
-	rowHdrW := 28 * s
-	printX = paperX + 16*s + rowHdrW
-	printW = paperW - 32*s - rowHdrW // printable width
-
 	maxCols := 100
 	if w.tmpl != nil && w.tmpl.MaxColumns > 0 {
 		maxCols = w.tmpl.MaxColumns
@@ -421,13 +407,24 @@ func (w *PassbookCanvasWidget) getGeometry() (paperX, paperY, paperW, paperH, pr
 			maxCols = 100
 		}
 	}
-	charW = printW / float32(maxCols)
+
+	rowHdrW := 28 * s
+	charW = 7.2 * s
+	printW = float32(maxCols) * charW
+	paperW = printW + 32*s + rowHdrW
+	printX = paperX + 16*s + rowHdrW
 
 	topM := 0
 	if w.tmpl != nil && w.tmpl.TopMargin > 0 {
 		topM = w.tmpl.TopMargin
 	}
 	originY = paperY + 44*s + float32(topM)*22*s
+
+	displayRows := w.GetDisplayRows()
+	tableHdrHeight := 28 * s
+	rowHeight := 22 * s
+	tableTotalHeight := tableHdrHeight + float32(displayRows)*rowHeight
+	paperH = (originY - paperY) + tableTotalHeight + 24*s
 	return
 }
 
@@ -936,16 +933,18 @@ func (r *passbookCanvasRenderer) rebuildObjects() {
 	nameBoxText.Move(fyne.NewPos(paperX+18*s, paperY+12*s))
 	objs = append(objs, nameBoxText)
 
-	// Info formula / properti kolom aktif & ukuran fisik buku tabungan
-	dimW, dimH := tmpl.GetPageDimensions()
-	mmWidth := float32(selCol.ColWidth) * 2.54
+	// Info formula / properti kolom aktif & spesifikasi buku tabungan
+	colsCount := tmpl.MaxColumns
+	if colsCount <= 0 {
+		colsCount = 100
+	}
 	modeStr := "Rapat"
 	if !w.stickyMode {
 		modeStr = "Bebas"
 	}
 	fontStr := fmt.Sprintf("%s %dpt %s (%d CPI)", tmpl.GetFontFamily(), tmpl.GetFontSize(), tmpl.GetFontStyle(), tmpl.GetFontPitchCPI())
-	infoStr := fmt.Sprintf("📏 %0.1f × %0.1f cm (%d Baris)  •  🔤 %s  •  Tab X: %d  •  Lebar: %d ch (%0.1f mm)  •  Rata: %s  •  Mode: %s  •  Target: Baris %02d",
-		dimW/10.0, dimH/10.0, tmpl.GetTotalRows(), fontStr, selCol.ColStart, selCol.ColWidth, mmWidth, selCol.Align, modeStr, w.GetTargetRow())
+	infoStr := fmt.Sprintf("📄 %d Kolom × %d Baris  •  🔤 %s  •  Tab X: %d  •  Lebar: %d ch  •  Rata: %s  •  Mode: %s  •  Target: Baris %02d",
+		colsCount, tmpl.GetTotalRows(), fontStr, selCol.ColStart, selCol.ColWidth, selCol.Align, modeStr, w.GetTargetRow())
 	infoText := canvas.NewText(infoStr, color.NRGBA{R: 71, G: 85, B: 105, A: 255})
 	infoText.TextSize = scaleFont(8.5, s)
 	infoText.Move(fyne.NewPos(paperX+110*s, paperY+13*s))
@@ -1258,9 +1257,13 @@ func (r *passbookCanvasRenderer) rebuildObjects() {
 	bottomLine.StrokeWidth = 1.2
 	objs = append(objs, bottomLine)
 
-	// Badge Informasi Ukuran Fisik Buku Tabungan di Sudut Bawah Kertas
-	badgeText := fmt.Sprintf("📏 Ukuran Fisik Buku: %0.1f cm × %0.1f cm  •  %d Baris  •  Max %d Kolom",
-		dimW/10.0, dimH/10.0, tmpl.GetTotalRows(), tmpl.MaxColumns)
+	// Badge Informasi Spesifikasi Buku Tabungan di Sudut Bawah Kertas
+	maxColsBadge := tmpl.MaxColumns
+	if maxColsBadge <= 0 {
+		maxColsBadge = 100
+	}
+	badgeText := fmt.Sprintf("📄 Format Buku: %d Baris  •  Max %d Kolom",
+		tmpl.GetTotalRows(), maxColsBadge)
 	badgeBg := canvas.NewRectangle(color.NRGBA{R: 241, G: 245, B: 249, A: 235})
 	badgeBg.StrokeColor = color.NRGBA{R: 203, G: 213, B: 225, A: 255}
 	badgeBg.StrokeWidth = 1.0

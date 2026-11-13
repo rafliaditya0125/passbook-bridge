@@ -20,46 +20,6 @@ import (
 	"passbook-bridge/internal/printer"
 )
 
-// BookSizePreset merepresentasikan preset fisik ukuran buku tabungan (P x L).
-type BookSizePreset struct {
-	Name        string
-	WidthMM     float64
-	HeightMM    float64
-	DefaultRows int
-	MaxColumns  int
-}
-
-var standardBookSizes = []BookSizePreset{
-	{
-		Name:        "14,8 x 10,5 cm (Standar BPR / Koperasi)",
-		WidthMM:     148.0,
-		HeightMM:    105.0,
-		DefaultRows: 34,
-		MaxColumns:  100,
-	},
-	{
-		Name:        "15,0 x 10,0 cm (Bank Mini / Sekolah)",
-		WidthMM:     150.0,
-		HeightMM:    100.0,
-		DefaultRows: 30,
-		MaxColumns:  100,
-	},
-	{
-		Name:        "16,0 x 11,0 cm (Passbook Lebar)",
-		WidthMM:     160.0,
-		HeightMM:    110.0,
-		DefaultRows: 34,
-		MaxColumns:  105,
-	},
-	{
-		Name:        "21,0 x 14,8 cm (Buku Besar A5)",
-		WidthMM:     210.0,
-		HeightMM:    148.0,
-		DefaultRows: 40,
-		MaxColumns:  140,
-	},
-}
-
 // clickableFontBox adalah widget card interaktif untuk menampilkan status font dan membuka dialog font via klik / double click
 type clickableFontBox struct {
 	widget.BaseWidget
@@ -180,7 +140,6 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 	var templateSelect *widget.Select
 	var refreshTemplateList func()
 	var entryTargetRow *widget.Entry
-	var selectBookSize *widget.Select
 	var entryTotalRows *widget.Entry
 	var entryMaxCols *widget.Entry
 	var entryTopMargin *widget.Entry
@@ -188,42 +147,22 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 	var fontBoxWidget *clickableFontBox
 	var updateFontUI func()
 
-	updateBookSizeUI := func() {
+	updateSettingsUI := func() {
 		if activeTmpl == nil {
 			return
 		}
 		isUpdatingUI = true
 		defer func() { isUpdatingUI = false }()
 
-		matched := false
-		for _, preset := range standardBookSizes {
-			if activeTmpl.BookSizeName == preset.Name || (activeTmpl.PageWidthMM == preset.WidthMM && activeTmpl.PageHeightMM == preset.HeightMM) {
-				if selectBookSize != nil {
-					selectBookSize.Selected = preset.Name
-					selectBookSize.Refresh()
-				}
-				matched = true
-				break
-			}
-		}
-		if !matched && selectBookSize != nil {
-			if activeTmpl.BookSizeName != "" {
-				selectBookSize.Selected = activeTmpl.BookSizeName
-			} else {
-				selectBookSize.Selected = "Kustom Ukuran..."
-			}
-			selectBookSize.Refresh()
-		}
-
-		if entryTotalRows != nil {
-			entryTotalRows.SetText(fmt.Sprintf("%d", activeTmpl.GetTotalRows()))
-		}
 		if entryMaxCols != nil {
 			curCols := activeTmpl.MaxColumns
 			if curCols <= 0 {
 				curCols = 100
 			}
 			entryMaxCols.SetText(fmt.Sprintf("%d", curCols))
+		}
+		if entryTotalRows != nil {
+			entryTotalRows.SetText(fmt.Sprintf("%d", activeTmpl.GetTotalRows()))
 		}
 		if entryTopMargin != nil {
 			entryTopMargin.SetText(fmt.Sprintf("%d", activeTmpl.TopMargin))
@@ -278,7 +217,7 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 			if rebuildColumnList != nil {
 				rebuildColumnList()
 			}
-			updateBookSizeUI()
+			updateSettingsUI()
 			_ = config.SaveLayoutConfig(state.LayoutsPath, state.Layouts)
 			state.NotifyStateChanged()
 		}
@@ -341,129 +280,6 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 
 	templateRow := container.NewBorder(nil, nil, nil, btnAddTemplate, templateSelect)
 
-	showCustomSizeDialog := func() {
-		curW, curH := activeTmpl.GetPageDimensions()
-		curRows := activeTmpl.GetTotalRows()
-		curCols := activeTmpl.MaxColumns
-		if curCols <= 0 {
-			curCols = 100
-		}
-
-		entryWidthCM := widget.NewEntry()
-		entryWidthCM.SetText(fmt.Sprintf("%0.1f", curW/10.0))
-
-		entryHeightCM := widget.NewEntry()
-		entryHeightCM.SetText(fmt.Sprintf("%0.1f", curH/10.0))
-
-		entryRowsCustom := widget.NewEntry()
-		entryRowsCustom.SetText(fmt.Sprintf("%d", curRows))
-
-		entryColsCustom := widget.NewEntry()
-		entryColsCustom.SetText(fmt.Sprintf("%d", curCols))
-
-		form := widget.NewForm(
-			widget.NewFormItem("Lebar Buku (cm)", entryWidthCM),
-			widget.NewFormItem("Tinggi Buku (cm)", entryHeightCM),
-			widget.NewFormItem("Jumlah Baris Buku", entryRowsCustom),
-			widget.NewFormItem("Maksimal Kolom (ch)", entryColsCustom),
-		)
-
-		d := showCustomConfirm(
-			"Atur Ukuran Buku Kustom",
-			"Terapkan", "Batal",
-			form,
-			func(confirmed bool) {
-				if !confirmed {
-					return
-				}
-				wCM, errW := strconv.ParseFloat(strings.ReplaceAll(strings.TrimSpace(entryWidthCM.Text), ",", "."), 64)
-				hCM, errH := strconv.ParseFloat(strings.ReplaceAll(strings.TrimSpace(entryHeightCM.Text), ",", "."), 64)
-				r, errR := strconv.Atoi(strings.TrimSpace(entryRowsCustom.Text))
-				c, errC := strconv.Atoi(strings.TrimSpace(entryColsCustom.Text))
-
-				if errW == nil && wCM >= 5.0 && wCM <= 50.0 {
-					activeTmpl.PageWidthMM = wCM * 10.0
-				}
-				if errH == nil && hCM >= 5.0 && hCM <= 50.0 {
-					activeTmpl.PageHeightMM = hCM * 10.0
-				}
-				if errR == nil && r >= 10 && r <= 100 {
-					activeTmpl.TotalRows = r
-				}
-				if errC == nil && c >= 20 && c <= 200 {
-					activeTmpl.MaxColumns = c
-				}
-				activeTmpl.BookSizeName = fmt.Sprintf("Kustom (%0.1f x %0.1f cm)", activeTmpl.PageWidthMM/10.0, activeTmpl.PageHeightMM/10.0)
-
-				if entryTotalRows != nil {
-					isUpdatingUI = true
-					entryTotalRows.SetText(fmt.Sprintf("%d", activeTmpl.GetTotalRows()))
-					isUpdatingUI = false
-				}
-				if entryMaxCols != nil {
-					isUpdatingUI = true
-					entryMaxCols.SetText(fmt.Sprintf("%d", activeTmpl.MaxColumns))
-					isUpdatingUI = false
-				}
-
-				if canvasWidget != nil {
-					canvasWidget.Refresh()
-				}
-				_ = config.SaveLayoutConfig(state.LayoutsPath, state.Layouts)
-				state.NotifyStateChanged()
-				state.Log(fmt.Sprintf("Ukuran buku kustom diterapkan: %0.1f x %0.1f cm (%d baris, %d kolom)",
-					activeTmpl.PageWidthMM/10.0, activeTmpl.PageHeightMM/10.0, activeTmpl.GetTotalRows(), activeTmpl.MaxColumns))
-			},
-			win,
-		)
-		d.Show()
-	}
-
-	// Ukuran Buku Tabungan (P x L) - Preset Standar & Opsi Kustom
-	bookSizeOptions := []string{
-		"14,8 x 10,5 cm (Standar BPR / Koperasi)",
-		"15,0 x 10,0 cm (Bank Mini / Sekolah)",
-		"16,0 x 11,0 cm (Passbook Lebar)",
-		"21,0 x 14,8 cm (Buku Besar A5)",
-		"Kustom Ukuran...",
-	}
-	selectBookSize = widget.NewSelect(bookSizeOptions, func(s string) {
-		if isUpdatingUI || activeTmpl == nil {
-			return
-		}
-		if s == "Kustom Ukuran..." {
-			showCustomSizeDialog()
-			return
-		}
-		for _, preset := range standardBookSizes {
-			if preset.Name == s {
-				activeTmpl.BookSizeName = preset.Name
-				activeTmpl.PageWidthMM = preset.WidthMM
-				activeTmpl.PageHeightMM = preset.HeightMM
-				activeTmpl.TotalRows = preset.DefaultRows
-				activeTmpl.MaxColumns = preset.MaxColumns
-
-				isUpdatingUI = true
-				if entryTotalRows != nil {
-					entryTotalRows.SetText(fmt.Sprintf("%d", activeTmpl.TotalRows))
-				}
-				if entryMaxCols != nil {
-					entryMaxCols.SetText(fmt.Sprintf("%d", activeTmpl.MaxColumns))
-				}
-				isUpdatingUI = false
-
-				if canvasWidget != nil {
-					canvasWidget.Refresh()
-				}
-				_ = config.SaveLayoutConfig(state.LayoutsPath, state.Layouts)
-				state.NotifyStateChanged()
-				state.Log(fmt.Sprintf("Ukuran buku diterapkan: '%s' (%.1f x %.1f mm, %d baris, %d kolom)",
-					preset.Name, preset.WidthMM, preset.HeightMM, preset.DefaultRows, preset.MaxColumns))
-				break
-			}
-		}
-	})
-
 	entryTotalRows = widget.NewEntry()
 	entryTotalRows.SetText(fmt.Sprintf("%d", activeTmpl.GetTotalRows()))
 	entryTotalRows.OnChanged = func(s string) {
@@ -479,6 +295,32 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 			state.NotifyStateChanged()
 		}
 	}
+
+	btnRowsMinus := widget.NewButton("-", func() {
+		if activeTmpl.GetTotalRows() > 10 {
+			activeTmpl.TotalRows = activeTmpl.GetTotalRows() - 1
+			entryTotalRows.SetText(fmt.Sprintf("%d", activeTmpl.TotalRows))
+			if canvasWidget != nil {
+				canvasWidget.Refresh()
+			}
+			_ = config.SaveLayoutConfig(state.LayoutsPath, state.Layouts)
+			state.NotifyStateChanged()
+		}
+	})
+
+	btnRowsPlus := widget.NewButton("+", func() {
+		if activeTmpl.GetTotalRows() < 100 {
+			activeTmpl.TotalRows = activeTmpl.GetTotalRows() + 1
+			entryTotalRows.SetText(fmt.Sprintf("%d", activeTmpl.TotalRows))
+			if canvasWidget != nil {
+				canvasWidget.Refresh()
+			}
+			_ = config.SaveLayoutConfig(state.LayoutsPath, state.Layouts)
+			state.NotifyStateChanged()
+		}
+	})
+
+	rowTotalRows := container.NewBorder(nil, nil, nil, container.NewHBox(btnRowsMinus, btnRowsPlus), entryTotalRows)
 
 	entryMaxCols = widget.NewEntry()
 	curColsInit := activeTmpl.MaxColumns
@@ -846,9 +688,8 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 
 	printSettingsForm := widget.NewForm(
 		widget.NewFormItem("Template Buku", templateRow),
-		widget.NewFormItem("Ukuran Buku (P x L)", selectBookSize),
 		widget.NewFormItem("Maksimal Kolom", rowMaxCols),
-		widget.NewFormItem("Jumlah Baris", entryTotalRows),
+		widget.NewFormItem("Jumlah Baris", rowTotalRows),
 		widget.NewFormItem("Target Baris Awal Cetak", rowTargetRow),
 		widget.NewFormItem("Margin Atas", rowTopMargin),
 		widget.NewFormItem("Spasi Setelah Baris", entrySpasiSetelah),
@@ -857,7 +698,7 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 	)
 
 	printSettingsCard := widget.NewCard("Pengaturan Cetak Buku Tabungan", "", printSettingsForm)
-	updateBookSizeUI()
+	updateSettingsUI()
 
 	// --- 3. Kiri Panel - Card 2: Posisi Kolom / Current X ( Tab ) ---
 	type colBinding struct {

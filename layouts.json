@@ -1,5 +1,5 @@
 {
-  "active_template": "tmpl-1792500970",
+  "active_template": "tabungan-standar-34",
   "templates": [
     {
       "id": "tabungan-standar-34",
@@ -139,7 +139,11 @@
     {
       "id": "bri-simpedes",
       "name": "BRI BritAma / Simpedes (35 Baris - 210 x 148 mm)",
-      "max_columns": 80,
+      "max_columns": 105,
+      "total_rows": 34,
+      "page_width_mm": 160,
+      "page_height_mm": 110,
+      "book_size_name": "16,0 x 11,0 cm (Passbook Lebar)",
       "columns": [
         {
           "id": "col_sandi",
@@ -375,12 +379,12 @@
     {
       "id": "tmpl-1792500970",
       "name": "Bank BJB",
-      "top_margin": 3,
       "max_columns": 100,
       "total_rows": 34,
       "page_width_mm": 148,
       "page_height_mm": 105,
       "book_size_name": "14,8 x 10,5 cm (Standar BPR / Koperasi)",
+      "top_margin": 1,
       "columns": [
         {
           "id": "col_tanggal",
