@@ -10,9 +10,9 @@
       "page_height_mm": 100,
       "book_size_name": "15,0 x 10,0 cm (Bank Mini / Sekolah)",
       "font_size": 10,
-      "font_family": "Arial Narrow",
-      "font_style": "Regular",
-      "font_pitch_cpi": 17,
+      "font_family": "FreeSerif",
+      "font_style": "Bold",
+      "font_pitch_cpi": 15,
       "columns": [
         {
           "id": "col_no",
@@ -34,7 +34,7 @@
           "id": "col_sandi",
           "field_key": "kode_transaksi",
           "display_name": "Kode/Sandi",
-          "col_start": 16,
+          "col_start": 15,
           "col_width": 6,
           "align": "center"
         },
@@ -42,7 +42,7 @@
           "id": "col_debet",
           "field_key": "debet",
           "display_name": "Debet",
-          "col_start": 23,
+          "col_start": 21,
           "col_width": 12,
           "align": "right"
         },
@@ -50,15 +50,15 @@
           "id": "col_kredit",
           "field_key": "kredit",
           "display_name": "Kredit",
-          "col_start": 36,
-          "col_width": 12,
+          "col_start": 33,
+          "col_width": 21,
           "align": "right"
         },
         {
           "id": "col_saldo",
           "field_key": "saldo_sesudah",
           "display_name": "Saldo",
-          "col_start": 49,
+          "col_start": 54,
           "col_width": 14,
           "align": "right"
         },
@@ -66,7 +66,7 @@
           "id": "col_paraf",
           "field_key": "petugas",
           "display_name": "Validasi",
-          "col_start": 80,
+          "col_start": 68,
           "col_width": 14,
           "align": "left"
         }

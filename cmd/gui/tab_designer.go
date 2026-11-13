@@ -452,32 +452,51 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 			return
 		}
 
-		fontFamilies := []string{
-			"Arial Narrow",
-			"Courier New",
-			"Consolas",
-			"Lucida Console",
-			"Tahoma",
-			"Segoe UI",
-			"Times New Roman",
-			"ESC/P Draft",
-		}
+		fontFamilies := GetSystemFontFamilies()
 
 		cleanFamilyName := func(val string) string {
+			val = strings.TrimSpace(val)
 			for _, f := range fontFamilies {
-				if strings.EqualFold(strings.TrimSpace(val), f) || strings.Contains(strings.ToLower(val), strings.ToLower(f)) {
+				if strings.EqualFold(val, f) {
 					return f
 				}
 			}
-			return strings.TrimSpace(val)
+			return val
+		}
+
+		curFam := cleanFamilyName(activeTmpl.GetFontFamily())
+		if curFam == "" && len(fontFamilies) > 0 {
+			curFam = fontFamilies[0]
 		}
 
 		selectFamily := widget.NewSelect(fontFamilies, nil)
-		curFam := cleanFamilyName(activeTmpl.GetFontFamily())
 		selectFamily.SetSelected(curFam)
-		if selectFamily.Selected == "" {
-			selectFamily.SetSelected("Arial Narrow")
+
+		entrySearchFont := widget.NewEntry()
+		entrySearchFont.SetPlaceHolder("Ketik untuk memfilter font...")
+		entrySearchFont.OnChanged = func(q string) {
+			q = strings.ToLower(strings.TrimSpace(q))
+			if q == "" {
+				selectFamily.Options = fontFamilies
+			} else {
+				var matches []string
+				for _, f := range fontFamilies {
+					if strings.Contains(strings.ToLower(f), q) {
+						matches = append(matches, f)
+					}
+				}
+				if len(matches) == 0 {
+					matches = []string{curFam}
+				}
+				selectFamily.Options = matches
+			}
+			selectFamily.Refresh()
 		}
+
+		searchAndSelectFamily := container.NewVBox(
+			entrySearchFont,
+			selectFamily,
+		)
 
 		fontSizes := []string{"8", "9", "10", "11", "12", "14", "16", "18", "20"}
 		selectSize := widget.NewSelect(fontSizes, nil)
@@ -550,14 +569,14 @@ func buildDesignerTab(win fyne.Window) fyne.CanvasObject {
 		previewCard := widget.NewCard("Pratinjau Font", "", previewBox)
 
 		form := widget.NewForm(
-			widget.NewFormItem("Jenis Font (Font Family)", selectFamily),
+			widget.NewFormItem("Jenis Font (Sistem)", searchAndSelectFamily),
 			widget.NewFormItem("Ukuran Font (pt)", selectSize),
 			widget.NewFormItem("Gaya Huruf (Style)", selectStyle),
 			widget.NewFormItem("Pitch Dot-Matrix (CPI)", selectPitch),
 		)
 
 		d := showCustomConfirm(
-			"Pilih Font Buku Tabungan",
+			"Pilih Font Buku Tabungan (Font Sistem)",
 			"Terapkan", "Batal",
 			container.NewVBox(
 				form,
